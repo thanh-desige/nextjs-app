@@ -1,0 +1,198 @@
+/**
+ * DimensionPanel.module.css
+ * 
+ * Styles cho Dimension Panel
+ */
+
+.panel {
+  background: #1e1e1e;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #333;
+  margin-bottom: 8px;
+}
+
+.title {
+  font-weight: 600;
+  color: #00ff00;
+  font-size: 12px;
+}
+
+/* Tool Grid */
+.toolGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.toolButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: #ccc;
+}
+
+.toolButton:hover {
+  background: #3d3d3d;
+  border-color: #555;
+}
+
+.toolButton.active {
+  background: #00ff00;
+  border-color: #00ff00;
+  color: #000;
+}
+
+.toolIcon {
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+
+.toolLabel {
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+/* Status */
+.status {
+  background: #2d2d2d;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.statusHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #00ff00;
+  margin-bottom: 6px;
+}
+
+.cancelButton {
+  background: transparent;
+  border: none;
+  color: #ff6b6b;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  line-height: 1;
+}
+
+.cancelButton:hover {
+  color: #ff4444;
+}
+
+.instruction {
+  font-size: 11px;
+  color: #aaa;
+  margin: 0 0 8px 0;
+}
+
+.progress {
+  display: flex;
+  gap: 4px;
+}
+
+.progressDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #444;
+  transition: background 0.2s ease;
+}
+
+.progressDot.completed {
+  background: #00ff00;
+}
+
+.progressDot.current {
+  background: #4a90d9;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Style Section */
+.styleSection {
+  border-top: 1px solid #333;
+  padding-top: 8px;
+}
+
+.styleHeader {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.styleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: #ccc;
+}
+
+.styleRow label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.colorInput {
+  width: 24px;
+  height: 20px;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.numberInput,
+.selectInput {
+  width: 60px;
+  padding: 2px 4px;
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 2px;
+  color: #ccc;
+  font-size: 11px;
+}
+
+.numberInput:focus,
+.selectInput:focus {
+  outline: none;
+  border-color: #4a90d9;
+}
+
+.checkbox {
+  margin-right: 4px;
+}

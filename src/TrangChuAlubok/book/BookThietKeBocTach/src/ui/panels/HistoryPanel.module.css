@@ -1,0 +1,194 @@
+/**
+ * HistoryPanel Styles
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1a1a2e;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #16213e;
+  border-bottom: 1px solid #333;
+}
+
+.title {
+  font-weight: bold;
+  color: #fff;
+  font-size: 13px;
+}
+
+.count {
+  background: #4a90d9;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid #333;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  padding: 6px 8px;
+  background: #0f3460;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #ddd;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.actionButton:hover:not(:disabled) {
+  background: #16213e;
+  border-color: #4a90d9;
+}
+
+.actionButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.actionButton.danger:hover:not(:disabled) {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+/* Current Action */
+.currentAction {
+  padding: 8px;
+  background: rgba(74, 144, 217, 0.1);
+  border-bottom: 1px solid #333;
+}
+
+.actionInfo {
+  display: flex;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.actionLabel {
+  color: #888;
+}
+
+.actionDesc {
+  color: #4a90d9;
+}
+
+/* History List */
+.historyList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+  color: #666;
+  font-size: 12px;
+}
+
+.historyItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+  transition: background 0.15s;
+}
+
+.historyItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.historyItem.current {
+  background: rgba(74, 144, 217, 0.2);
+}
+
+.historyItem.undone {
+  opacity: 0.4;
+}
+
+.typeIcon {
+  font-size: 14px;
+}
+
+.itemInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.itemDesc {
+  color: #ddd;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemTime {
+  color: #666;
+  font-size: 10px;
+}
+
+.currentMarker {
+  color: #4a90d9;
+  font-size: 12px;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: space-around;
+  padding: 6px 8px;
+  background: #16213e;
+  border-top: 1px solid #333;
+}
+
+.shortcut {
+  color: #666;
+  font-size: 10px;
+}
+
+/* Scrollbar */
+.historyList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.historyList::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+.historyList::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+.historyList::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}

@@ -1,0 +1,429 @@
+/**
+ * Styles for BookThietKeBocTachPage
+ */
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #1a1a2e;
+  color: #ffffff;
+  gap: 1rem;
+}
+
+.loadingSpinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #333;
+  border-top-color: #4a90d9;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #1a1a2e;
+  color: #ffffff;
+  gap: 1rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.errorContainer h2 {
+  color: #ff6b6b;
+  margin: 0;
+}
+
+.errorContainer p {
+  color: #aaa;
+  max-width: 400px;
+}
+
+.errorContainer button {
+  padding: 0.75rem 1.5rem;
+  background-color: #4a90d9;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+.errorContainer button:hover {
+  background-color: #357abd;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.colorPickerOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Theme variables - using local classes instead of data attributes */
+.cadApp {
+  --cad-bg-primary: #1a1a2e;
+  --cad-bg-secondary: #16213e;
+  --cad-bg-tertiary: #0f3460;
+  --cad-text-primary: #ffffff;
+  --cad-text-secondary: #aaaaaa;
+  --cad-accent: #4a90d9;
+  --cad-accent-hover: #357abd;
+  --cad-border: #333;
+  --cad-success: #4ade80;
+  --cad-warning: #fbbf24;
+  --cad-error: #ff6b6b;
+  --cad-info: #60a5fa;
+}
+
+/* Dark theme (default) */
+.cadApp.themeDark {
+  --cad-bg-primary: #1a1a2e;
+  --cad-bg-secondary: #16213e;
+  --cad-bg-tertiary: #0f3460;
+  --cad-text-primary: #ffffff;
+  --cad-text-secondary: #aaaaaa;
+}
+
+/* Light theme */
+.cadApp.themeLight {
+  --cad-bg-primary: #f5f5f5;
+  --cad-bg-secondary: #ffffff;
+  --cad-bg-tertiary: #e5e5e5;
+  --cad-text-primary: #1a1a2e;
+  --cad-text-secondary: #666666;
+  --cad-border: #ddd;
+}
+
+/* Auto theme (follows system) */
+@media (prefers-color-scheme: light) {
+  .cadApp.themeAuto {
+    --cad-bg-primary: #f5f5f5;
+    --cad-bg-secondary: #ffffff;
+    --cad-bg-tertiary: #e5e5e5;
+    --cad-text-primary: #1a1a2e;
+    --cad-text-secondary: #666666;
+    --cad-border: #ddd;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .cadApp.themeAuto {
+    --cad-bg-primary: #1a1a2e;
+    --cad-bg-secondary: #16213e;
+    --cad-bg-tertiary: #0f3460;
+    --cad-text-primary: #ffffff;
+    --cad-text-secondary: #aaaaaa;
+  }
+}
+
+/* ==================== Main Layout ==================== */
+
+.container {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--cad-bg-primary, #1a1a2e);
+}
+
+.header {
+  height: 40px;
+  min-height: 40px;
+  background: #16213e;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+}
+
+.headerTitle {
+  color: #fff;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.headerSeparator {
+  color: #666;
+}
+
+.headerProject {
+  color: #aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headerActions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Left Sidebar - Tool Palette */
+.leftSidebar {
+  width: 60px;
+  min-width: 60px;
+  background: #1a1a2e;
+  border-right: 1px solid #333;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+/* Canvas Area */
+.canvasArea {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Right Sidebar - Properties & BOM */
+.rightSidebar {
+  width: 280px;
+  min-width: 280px;
+  background: #1a1a2e;
+  border-left: 1px solid #333;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.sidebarTitle {
+  color: #fff;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.sidebarContent {
+  color: #aaa;
+  font-size: 12px;
+}
+
+.sidebarDivider {
+  border: none;
+  border-top: 1px solid #333;
+  margin: 16px 0;
+}
+
+/* Status Bar */
+.statusBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 12px;
+  background: #1a1a2e;
+  color: #aaa;
+  font-size: 12px;
+  border-top: 1px solid #333;
+  min-height: 24px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.statusPrompt {
+  flex: 1;
+  min-width: 100px;
+}
+
+.statusInfo {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Buttons */
+.exportButton {
+  padding: 4px 8px;
+  background: #4a90d9;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.exportButton:hover {
+  background: #357abd;
+}
+
+.bomButton {
+  margin-top: 8px;
+  padding: 4px 8px;
+  background: #333;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  transition: background-color 0.2s;
+}
+
+.bomButton:hover {
+  background: #444;
+}
+
+/* ==================== Properties Panel ==================== */
+
+.propertiesPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.propertyGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: #16213e;
+  border-radius: 4px;
+}
+
+.propertyRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  padding: 2px 0;
+}
+
+.propertyRow span:first-child {
+  color: #888;
+}
+
+.propertyRow span:last-child {
+  color: #fff;
+  font-family: monospace;
+}
+
+.propertyRow input[type="color"] {
+  width: 24px;
+  height: 24px;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+}
+
+.propertyRow input[type="number"],
+.propertyRow input[type="text"] {
+  width: 80px;
+  padding: 2px 4px;
+  background: #0f3460;
+  border: 1px solid #333;
+  color: #fff;
+  border-radius: 2px;
+  font-size: 11px;
+}
+
+/* ==================== Responsive ==================== */
+
+/* Tablet - Hide right sidebar, shrink left */
+@media (max-width: 1024px) {
+  .rightSidebar {
+    display: none;
+  }
+
+  .header {
+    padding: 0 8px;
+  }
+
+  .headerProject {
+    display: none;
+  }
+
+  .headerSeparator {
+    display: none;
+  }
+
+  .statusInfo {
+    gap: 8px;
+    font-size: 11px;
+  }
+}
+
+/* Mobile - Minimal toolbar */
+@media (max-width: 768px) {
+  .leftSidebar {
+    width: 48px;
+    min-width: 48px;
+    padding: 4px;
+  }
+
+  .header {
+    height: 36px;
+    min-height: 36px;
+  }
+
+  .headerTitle {
+    font-size: 14px;
+  }
+
+  .statusBar {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+
+  .statusInfo span:nth-child(n + 4) {
+    display: none;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+  .leftSidebar {
+    width: 40px;
+    min-width: 40px;
+  }
+
+  .headerActions {
+    gap: 4px;
+  }
+
+  .exportButton {
+    padding: 2px 6px;
+    font-size: 12px;
+  }
+
+  .statusInfo span:nth-child(n + 3) {
+    display: none;
+  }
+}
