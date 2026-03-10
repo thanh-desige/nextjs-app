@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" 
+     width="810" height="610" 
+     viewBox="0 0 810 610">
+  <title>Cửa sổ hất</title>
+  <desc>Exported from CAD Thiết Kế Bóc Tách - Cropped 1:1</desc>
+  
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#1a1a2e"/>
+  
+  <!-- Door: 800x600mm, origin at (5,5) with 5px margin -->
+  <g transform="translate(5, 5)">
+    <!-- Kích thước cửa: 800 x 600 -->
+    <!-- frameT = 30mm, profileDepth = 24mm, innerFrameT = 24mm -->
+    
+    <!-- ===== KHUNG NGOÀI (FRAME) - 4 thanh profile 3D ===== -->
+    
+    <!-- Thanh trên - hình thang -->
+    <polygon points="0,0 800,0 776,24 24,24" 
+             stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+             fill="#CCCCFF" fill-opacity="1"/>
+    
+    <!-- Thanh dưới - hình thang -->
+    <polygon points="24,576 776,576 800,600 0,600" 
+             stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+             fill="#CCCCFF" fill-opacity="1"/>
+    
+    <!-- Thanh trái - hình thang -->
+    <polygon points="0,0 24,24 24,576 0,600" 
+             stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+             fill="#CCCCFF" fill-opacity="1"/>
+    
+    <!-- Thanh phải - hình thang -->
+    <polygon points="776,24 800,0 800,600 776,576" 
+             stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+             fill="#CCCCFF" fill-opacity="1"/>
+    
+    <!-- ===== KHUNG TRONG (SASH) - 4 thanh profile 3D ===== -->
+    <!-- innerX=30, innerY=30, innerW=740, innerH=540 -->
+    
+    <!-- Sash - Thanh trên -->
+    <polygon points="30,30 770,30 746,54 54,54" 
+             stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+             fill="#CCCCFF" fill-opacity="1"/>
+    
+    <!-- Sash - Thanh dưới -->
+    <polygon points="54,546 746,546 770,570 30,570" 
+             stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+             fill="#CCCCFF" fill-opacity="1"/>
+    
+    <!-- Sash - Thanh trái -->
+    <polygon points="30,30 54,54 54,546 30,570" 
+             stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+             fill="#CCCCFF" fill-opacity="1"/>
+    
+    <!-- Sash - Thanh phải -->
+    <polygon points="746,54 770,30 770,570 746,546" 
+             stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+             fill="#CCCCFF" fill-opacity="1"/>
+    
+    <!-- ===== KÍNH ===== -->
+    <!-- glassX=54, glassY=54, glassW=692, glassH=492 -->
+    <rect x="54" y="54" width="692" height="492" 
+          fill="#AAFFAA" fill-opacity="0.15" 
+          stroke="#FFFFFF" stroke-width="1" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    
+    <!-- ===== ĐƯỜNG MỞ TAM GIÁC (bản lề ở trên, hất ra ngoài) ===== -->
+    <!-- Đường chéo trái: từ giữa-trên xuống góc dưới trái -->
+    <line x1="400" y1="54" x2="54" y2="546" 
+          stroke="#FF00FF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    
+    <!-- Đường chéo phải: từ giữa-trên xuống góc dưới phải -->
+    <line x1="400" y1="54" x2="746" y2="546" 
+          stroke="#FF00FF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    
+    <!-- ===== TAY NẮM (ở giữa cạnh dưới kính) ===== -->
+    <!-- Vị trí: centerX=400, handleY=546 (cạnh dưới kính) -->
+    <circle cx="400" cy="534" r="6" 
+            stroke="#FF00FF" stroke-width="1" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+            fill="#00FFFF" fill-opacity="1"/>
+    
+    <!-- Thanh ngang tay nắm -->
+    <line x1="370" y1="534" x2="430" y2="534" 
+          stroke="#00FFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+  </g>
+</svg>

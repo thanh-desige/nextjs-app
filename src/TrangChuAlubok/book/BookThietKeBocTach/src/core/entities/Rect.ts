@@ -9,7 +9,11 @@ import {
   boundingBoxFromPoints,
   isPointInPolygon,
 } from "../geometry/GeometryUtils";
-import { BaseEntity, createGripPoint } from "./BaseEntity";
+import {
+  initEntityBase,
+  createGripPoint,
+  serializeEntityBase,
+} from "./EntityBaseUtils";
 import {
   EntityType,
   EntityStyle,
@@ -19,8 +23,19 @@ import {
   IRectEntity,
 } from "./Entity.types";
 
-export class RectEntity extends BaseEntity implements IRectEntity {
+export class RectEntity implements IRectEntity {
+  public id: string;
   public readonly type = EntityType.RECT;
+  public name?: string;
+  public layerId: string;
+  public style: EntityStyle;
+  public state: {
+    selected: boolean;
+    hovered: boolean;
+    visible: boolean;
+    locked: boolean;
+  };
+  public metadata?: Record<string, unknown>;
   public origin: Vec2;
   public width: number;
   public height: number;
@@ -36,9 +51,15 @@ export class RectEntity extends BaseEntity implements IRectEntity {
       layerId?: string;
       style?: Partial<EntityStyle>;
       rotation?: number;
-    }
+    },
   ) {
-    super(options);
+    const base = initEntityBase(options);
+    this.id = base.id;
+    this.name = base.name;
+    this.layerId = base.layerId;
+    this.style = base.style;
+    this.state = base.state;
+    this.metadata = base.metadata;
     this.origin = Vec2.from(origin);
     this.width = width;
     this.height = height;
@@ -51,7 +72,7 @@ export class RectEntity extends BaseEntity implements IRectEntity {
     origin: IVec2,
     width: number,
     height: number,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): RectEntity {
     return new RectEntity(origin, width, height, { style });
   }
@@ -60,7 +81,7 @@ export class RectEntity extends BaseEntity implements IRectEntity {
   static fromCorners(
     p1: IVec2,
     p2: IVec2,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): RectEntity {
     const minX = Math.min(p1.x, p2.x);
     const minY = Math.min(p1.y, p2.y);
@@ -74,13 +95,13 @@ export class RectEntity extends BaseEntity implements IRectEntity {
     center: IVec2,
     width: number,
     height: number,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): RectEntity {
     return new RectEntity(
       { x: center.x - width / 2, y: center.y - height / 2 },
       width,
       height,
-      { style }
+      { style },
     );
   }
 
@@ -95,7 +116,7 @@ export class RectEntity extends BaseEntity implements IRectEntity {
         layerId: json.layerId,
         style: json.style,
         rotation: json.rotation as number,
-      }
+      },
     );
     rect.metadata = json.metadata;
     return rect;
@@ -114,7 +135,7 @@ export class RectEntity extends BaseEntity implements IRectEntity {
 
     if (this.rotation !== 0) {
       const matrix = Matrix3.translation(this.origin.x, this.origin.y).rotate(
-        this.rotation
+        this.rotation,
       );
       return corners.map((c) => matrix.transformPoint(c));
     }
@@ -127,7 +148,7 @@ export class RectEntity extends BaseEntity implements IRectEntity {
     const center = new Vec2(this.width / 2, this.height / 2);
     if (this.rotation !== 0) {
       const matrix = Matrix3.translation(this.origin.x, this.origin.y).rotate(
-        this.rotation
+        this.rotation,
       );
       return matrix.transformPoint(center);
     }
@@ -151,9 +172,15 @@ export class RectEntity extends BaseEntity implements IRectEntity {
       this.origin.clone(),
       this.width,
       this.height,
-      { rotation: this.rotation }
+      {
+        rotation: this.rotation,
+        layerId: this.layerId,
+        style: { ...this.style },
+        name: this.name,
+      },
     );
-    cloned.copyBaseFrom(this);
+    cloned.state = { ...this.state };
+    cloned.metadata = this.metadata ? { ...this.metadata } : undefined;
     return cloned;
   }
 
@@ -231,25 +258,25 @@ export class RectEntity extends BaseEntity implements IRectEntity {
         corners[0].midpoint(corners[1]),
         GripType.MIDPOINT,
         this.id,
-        4
+        4,
       ),
       createGripPoint(
         corners[1].midpoint(corners[2]),
         GripType.MIDPOINT,
         this.id,
-        5
+        5,
       ),
       createGripPoint(
         corners[2].midpoint(corners[3]),
         GripType.MIDPOINT,
         this.id,
-        6
+        6,
       ),
       createGripPoint(
         corners[3].midpoint(corners[0]),
         GripType.MIDPOINT,
         this.id,
-        7
+        7,
       ),
       // Tâm
       createGripPoint(center, GripType.CENTER, this.id),
@@ -302,7 +329,7 @@ export class RectEntity extends BaseEntity implements IRectEntity {
 
   toJSON(): EntityJSON {
     return {
-      ...this.serializeBase(),
+      ...serializeEntityBase(this),
       type: this.type,
       origin: this.origin.toObject(),
       width: this.width,

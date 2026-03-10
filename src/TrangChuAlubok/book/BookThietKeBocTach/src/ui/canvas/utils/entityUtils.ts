@@ -1,18 +1,74 @@
 /**
  * Entity utilities for CAD canvas
  * Contains hit testing, bounds calculation, and entity manipulation functions
+ *
+ * ============================================================================
+ * TEXT HIT TEST - 2D FIRST, 3D READY
+ * ============================================================================
+ * TextContext (optional) cho phép hitTest và bounds calculation biết về
+ * text render settings (AUTO_ANNOTATION vs WORLD_RATIO mode).
+ *
+ * Khi không có context: sử dụng entity.fontSize (WORLD_RATIO logic)
+ * Khi có context:
+ *   - AUTO_ANNOTATION: fontSize = annotationPx / zoom (world units)
+ *   - WORLD_RATIO: fontSize = entity.fontSize * worldRatio
+ * ============================================================================
  */
 
 import { distance } from "./geometry";
 import type { Point, CadEntity } from "../types/CadEntity";
+import type { TextRenderSettings } from "./renderEntity";
 
 // Re-export for backward compatibility
 export type { Point, CadEntity };
 
+// ==================== Text Context for Hit Test ====================
+
+export interface TextHitTestContext {
+  zoom: number;
+  textSettings: TextRenderSettings;
+}
+
+/**
+ * Calculate effective fontSize for TEXT entity based on TextRenderSettings
+ * @param entity - TEXT entity
+ * @param context - Optional text context with zoom and settings
+ * @returns Effective fontSize in WORLD units
+ */
+function getEffectiveTextFontSize(
+  entity: CadEntity,
+  context?: TextHitTestContext
+): number {
+  const baseFontSize = entity.fontSize ?? 14;
+  const entityScale = entity.textScale ?? 1;
+
+  if (!context) {
+    // No context: use WORLD_RATIO logic with ratio=1
+    return baseFontSize * entityScale;
+  }
+
+  const { zoom, textSettings } = context;
+
+  if (textSettings.scaleMode === "AUTO_ANNOTATION") {
+    // AUTO_ANNOTATION: convert from screen pixels to world units
+    // fontSize (screen) = annotationPx * entityScale
+    // fontSize (world) = fontSize (screen) / zoom
+    return (textSettings.annotationPx * entityScale) / zoom;
+  } else {
+    // WORLD_RATIO: fontSize = baseFontSize * worldRatio * entityScale
+    return baseFontSize * textSettings.worldRatio * entityScale;
+  }
+}
+
 /**
  * Calculate bounding box of an entity
+ * @param entity - CadEntity to calculate bounds for
+ * @param textContext - Optional context for TEXT entities to calculate proper bounds based on TextRenderSettings
  */
-export const entityBounds = (entity: CadEntity): { min: Point; max: Point } => {
+export const entityBounds = (
+  entity: CadEntity,
+  textContext?: TextHitTestContext
+): { min: Point; max: Point } => {
   if (entity.type === "circle") {
     const center = entity.points[0];
     const radius = entity.points[1].x;
@@ -25,7 +81,8 @@ export const entityBounds = (entity: CadEntity): { min: Point; max: Point } => {
   if (entity.type === "text" && entity.text) {
     // Better text bounds calculation with multiline support
     const pos = entity.points[0];
-    const fontSize = entity.fontSize || 14;
+    // Use effective fontSize based on text context (AUTO_ANNOTATION or WORLD_RATIO)
+    const fontSize = getEffectiveTextFontSize(entity, textContext);
     const lineHeight = fontSize * 1.2;
     // More accurate width estimation based on average character width
     // Monospace fonts: ~0.6, Sans-serif: ~0.5, Serif: ~0.45
@@ -39,7 +96,6 @@ export const entityBounds = (entity: CadEntity): { min: Point; max: Point } => {
       if (lineWidth > maxWidth) maxWidth = lineWidth;
     });
     const textWidth = maxWidth;
-    const textHeight = lines.length * lineHeight;
 
     return {
       min: { x: pos.x, y: pos.y - lineHeight }, // First line baseline
@@ -181,17 +237,55 @@ export const entityIntersectsRect = (
 
 /**
  * Hit test an entity at a world position
+ * @param entity - CadEntity to hit test
+ * @param worldPos - Position in world coordinates
+ * @param tolerance - Hit tolerance in world units
+ * @param textContext - Optional context for TEXT entities to calculate proper hit area based on TextRenderSettings
  */
 export const hitTestEntity = (
   entity: CadEntity,
   worldPos: Point,
-  tolerance: number
+  tolerance: number,
+  textContext?: TextHitTestContext
 ): boolean => {
   if (entity.type === "circle") {
     const center = entity.points[0];
     const radius = entity.points[1].x;
     const dist = distance(worldPos, center);
     return Math.abs(dist - radius) <= tolerance;
+  }
+
+  // Arc hit test - must match rendering logic
+  if (entity.type === "arc" && entity.points.length >= 2) {
+    const center = entity.points[0];
+    const radius = entity.points[1].x;
+    const startAngle = entity.startAngle ?? 0;
+    const endAngle = entity.endAngle ?? Math.PI * 2;
+
+    // First check distance to arc edge
+    const distToCenter = distance(worldPos, center);
+    if (Math.abs(distToCenter - radius) > tolerance) return false;
+
+    // Check if point angle is within arc range - must match rendering logic
+    const pointAngle = Math.atan2(worldPos.y - center.y, worldPos.x - center.x);
+
+    // Calculate sweep same as rendering
+    let sweep = endAngle - startAngle;
+    while (sweep > Math.PI) sweep -= 2 * Math.PI;
+    while (sweep < -Math.PI) sweep += 2 * Math.PI;
+
+    // Normalize angle relative to startAngle
+    let relativeAngle = pointAngle - startAngle;
+    while (relativeAngle > Math.PI) relativeAngle -= 2 * Math.PI;
+    while (relativeAngle < -Math.PI) relativeAngle += 2 * Math.PI;
+
+    if (sweep > 0) {
+      // Arc goes CCW from startAngle
+      return relativeAngle >= 0 && relativeAngle <= sweep;
+    } else {
+      // Arc goes CW from startAngle (sweep is negative)
+      return relativeAngle <= 0 && relativeAngle >= sweep;
+    }
   }
 
   if (entity.type === "rect") {
@@ -225,7 +319,8 @@ export const hitTestEntity = (
   // Text thường khó click hơn, nên sử dụng tolerance lớn hơn
   if (entity.type === "text" && entity.text) {
     const pos = entity.points[0];
-    const fontSize = entity.fontSize || 14;
+    // Use effective fontSize based on text context (AUTO_ANNOTATION or WORLD_RATIO)
+    const fontSize = getEffectiveTextFontSize(entity, textContext);
     const lineHeight = fontSize * 1.2;
     // Better width estimation
     const avgCharWidth = entity.fontFamily?.includes("mono") ? 0.6 : 0.5;
@@ -238,7 +333,6 @@ export const hitTestEntity = (
       if (lineWidth > maxWidth) maxWidth = lineWidth;
     });
     const textWidth = maxWidth;
-    const textHeight = lines.length * lineHeight;
 
     // Tăng tolerance cho text để dễ click hơn
     const textTolerance = Math.max(tolerance, fontSize * 0.5);

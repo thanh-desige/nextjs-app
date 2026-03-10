@@ -2,12 +2,14 @@
  * useCadEngine - Hook to access and control the CAD engine
  *
  * ĐIỀU KIỆN 1: Mọi thay đổi entity phải đi qua Commands → History
+ * STEP-1.3: Selection now reads from CadDocument via useCanvasEntities
  */
 
 "use client";
 
 import { useEffect, useCallback, useRef } from "react";
 import { useEngineStore } from "../store/engineStore";
+import { useCanvasEntities } from "./useCanvasEntities";
 import { CadEngine } from "../core/engine/CadEngine";
 import { IEntity } from "../core/entities/Entity.types";
 import { ToolMode } from "../core/engine/EngineState";
@@ -70,10 +72,17 @@ export interface UseCadEngineReturn {
 export function useCadEngine(): UseCadEngineReturn {
   const initCalled = useRef(false);
 
-  // Store selectors
+  // STEP-1.3: Selection from CadDocument via useCanvasEntities
+  const {
+    selectedIds,
+    selectEntities: canvasSelectEntities,
+    clearSelection: canvasClearSelection,
+    entities: canvasEntities,
+  } = useCanvasEntities();
+
+  // Store selectors (non-selection)
   const engine = useEngineStore((state) => state.engine);
   const activeTool = useEngineStore((state) => state.activeTool);
-  const selectedIds = useEngineStore((state) => state.selectedIds);
   const zoom = useEngineStore((state) => state.zoom);
   const panOffset = useEngineStore((state) => state.panOffset);
   const canUndo = useEngineStore((state) => state.canUndo);
@@ -86,14 +95,11 @@ export function useCadEngine(): UseCadEngineReturn {
   const initEngine = useEngineStore((state) => state.initEngine);
   const _destroyEngine = useEngineStore((state) => state.destroyEngine);
   const setActiveTool = useEngineStore((state) => state.setActiveTool);
-  const storeSelect = useEngineStore((state) => state.select);
-  const storeClearSelection = useEngineStore((state) => state.clearSelection);
-  const storeSelectAll = useEngineStore((state) => state.selectAll);
   const storeAddEntity = useEngineStore((state) => state.addEntity);
   const storeDeleteEntities = useEngineStore((state) => state.deleteEntities);
   // ĐIỀU KIỆN 1: Use executeCommandObject for updateEntity
   const executeCommandObject = useEngineStore(
-    (state) => state.executeCommandObject
+    (state) => state.executeCommandObject,
   );
   const storeGetEntity = useEngineStore((state) => state.getEntity);
   const storeGetAllEntities = useEngineStore((state) => state.getAllEntities);
@@ -130,36 +136,38 @@ export function useCadEngine(): UseCadEngineReturn {
     (tool: ToolMode) => {
       setActiveTool(tool);
     },
-    [setActiveTool]
+    [setActiveTool],
   );
 
+  // STEP-1.3: Selection actions via Commands (CadDocument single source)
   const select = useCallback(
     (ids: string[]) => {
-      storeSelect(ids);
+      canvasSelectEntities(ids, false);
     },
-    [storeSelect]
+    [canvasSelectEntities],
   );
 
   const clearSelection = useCallback(() => {
-    storeClearSelection();
-  }, [storeClearSelection]);
+    canvasClearSelection();
+  }, [canvasClearSelection]);
 
   const selectAll = useCallback(() => {
-    storeSelectAll();
-  }, [storeSelectAll]);
+    const allIds = canvasEntities.map((e) => e.id);
+    canvasSelectEntities(allIds, false);
+  }, [canvasEntities, canvasSelectEntities]);
 
   const addEntity = useCallback(
     (entity: IEntity) => {
       storeAddEntity(entity);
     },
-    [storeAddEntity]
+    [storeAddEntity],
   );
 
   const removeEntity = useCallback(
     (id: string) => {
       storeDeleteEntities([id]);
     },
-    [storeDeleteEntities]
+    [storeDeleteEntities],
   );
 
   // ĐIỀU KIỆN 1: updateEntity phải đi qua Commands → History
@@ -169,14 +177,14 @@ export function useCadEngine(): UseCadEngineReturn {
       const command = new UpdateEntityPropertiesCommand(id, updates);
       executeCommandObject(command);
     },
-    [executeCommandObject]
+    [executeCommandObject],
   );
 
   const getEntity = useCallback(
     (id: string) => {
       return storeGetEntity(id);
     },
-    [storeGetEntity]
+    [storeGetEntity],
   );
 
   const getAllEntities = useCallback(() => {
@@ -199,7 +207,7 @@ export function useCadEngine(): UseCadEngineReturn {
     (command: string, args?: string[]) => {
       storeExecuteCommand(command, args);
     },
-    [storeExecuteCommand]
+    [storeExecuteCommand],
   );
 
   const cancelCommand = useCallback(() => {
@@ -210,14 +218,14 @@ export function useCadEngine(): UseCadEngineReturn {
     (z: number) => {
       storeSetZoom(z);
     },
-    [storeSetZoom]
+    [storeSetZoom],
   );
 
   const setPanOffset = useCallback(
     (offset: IVec2) => {
       storeSetPanOffset(offset);
     },
-    [storeSetPanOffset]
+    [storeSetPanOffset],
   );
 
   const zoomFit = useCallback(() => {

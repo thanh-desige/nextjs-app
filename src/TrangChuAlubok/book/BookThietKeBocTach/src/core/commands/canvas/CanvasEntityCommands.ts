@@ -1,18 +1,21 @@
 /**
  * CanvasEntityCommands - Commands cho Canvas entities
  *
+ * STEP-5.2: Large geometry commands extracted to separate files:
+ * - TrimCanvasEntityCommand.ts (~940 lines)
+ * - FilletCanvasEntityCommand.ts (~660 lines)
+ * - ExtendCanvasEntityCommand.ts (~310 lines)
+ * - OffsetCanvasEntityCommand.ts (~240 lines)
+ * - ExplodeCanvasEntitiesCommand.ts (~185 lines)
+ * - canvasCommandUtils.ts (shared utilities)
+ *
+ * This file retains CRUD + Selection + Transform commands (~1200 lines)
+ *
  * ĐIỀU KIỆN 1: UI → CadEngine → Document → History
  * Mọi thay đổi entity từ CadDrawingCanvas PHẢI đi qua các Commands này
  *
  * ĐIỀU KIỆN 2: PropertySchema là luật tối cao
  * Mọi property updates PHẢI được validate trước khi apply
- *
- * Commands:
- * - AddCanvasEntityCommand: Thêm entity mới (line, rect, circle, polyline)
- * - DeleteCanvasEntitiesCommand: Xóa entities
- * - MoveCanvasEntitiesCommand: Di chuyển entities
- * - UpdateCanvasEntityCommand: Cập nhật properties của entity (với validation)
- * - BatchCanvasEntityCommand: Thực hiện nhiều thay đổi cùng lúc
  *
  * PHASE 2 UPDATE: Commands sử dụng EntityUtils qua EntityAdapter
  * - transformCanvasEntity() để áp dụng transformations
@@ -20,164 +23,36 @@
  */
 
 import { ICommand, CommandContext, CommandResult } from "../Command.types";
+import { CanvasEntity, CanvasPoint } from "../../document/CadDocument";
+
+// Import shared utilities from canvasCommandUtils
 import {
-  CadDocument,
-  CanvasEntity,
-  CanvasPoint,
-} from "../../document/CadDocument";
-import { EntityType } from "../../entities/Entity.types";
-import { propertySchema } from "../../properties/PropertySchema";
+  CanvasCommandContext,
+  generateCanvasId,
+  mapCanvasTypeToEntityType,
+  validateCanvasProperty,
+  validateCanvasUpdates,
+} from "./canvasCommandUtils";
 
-// PHASE 2: EntityUtils and Adapter are available for future refactoring
-// Commands can use these for consistent transformations:
-// - transformCanvasEntity() - apply transformation via UnifiedEntity
-// - translateEntity(), rotateEntity(), scaleEntity(), mirrorEntity(), offsetEntity()
-//
-// Currently, commands use inline logic for backwards compatibility.
-// Future migration: Replace inline logic with EntityUtils calls.
-//
-// Example:
-// const moved = transformCanvasEntity(entity, (unified) => translateEntity(unified, dx, dy));
-// document.updateCanvasEntity(id, moved);
-
-// ==================== Extended Context ====================
-
-/**
- * Extended context that includes document access
- * This ensures ĐIỀU KIỆN 1 is followed
- */
-export interface CanvasCommandContext extends CommandContext {
-  /** Access to CadDocument for canvas entity operations */
-  document: CadDocument;
-}
-
-// Re-export types for convenience
+// Re-export types and utilities for backward compatibility
+export type { CanvasCommandContext };
 export type { CanvasEntity, CanvasPoint };
 
-// Helper to generate unique ID
-function generateCanvasId(): string {
-  return `canvas_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
+// Re-export extracted commands for backward compatibility
+export { TrimCanvasEntityCommand } from "./TrimCanvasEntityCommand";
+export { FilletCanvasEntityCommand } from "./FilletCanvasEntityCommand";
+export { ExtendCanvasEntityCommand } from "./ExtendCanvasEntityCommand";
+export { OffsetCanvasEntityCommand } from "./OffsetCanvasEntityCommand";
+export { ExplodeCanvasEntitiesCommand } from "./ExplodeCanvasEntitiesCommand";
 
-// ==================== ĐIỀU KIỆN 2: Property Validation ====================
-
-/**
- * Map CanvasEntity.type (lowercase) sang EntityType (uppercase)
- * Đảm bảo compatibility với PropertySchema
- */
-function mapCanvasTypeToEntityType(
-  canvasType: CanvasEntity["type"]
-): EntityType {
-  const typeMap: Record<CanvasEntity["type"], EntityType> = {
-    line: EntityType.LINE,
-    polyline: EntityType.POLYLINE,
-    rect: EntityType.RECT,
-    circle: EntityType.CIRCLE,
-    arc: EntityType.ARC,
-    ellipse: EntityType.ELLIPSE,
-    text: EntityType.TEXT,
-  };
-  return typeMap[canvasType] || EntityType.LINE;
-}
-
-/**
- * Validate canvas entity property theo PropertySchema
- * ĐIỀU KIỆN 2: PropertySchema là luật tối cao
- */
-function validateCanvasProperty(
-  entityType: CanvasEntity["type"],
-  key: string,
-  value: unknown
-): { valid: boolean; error?: string; coercedValue?: unknown } {
-  const mappedType = mapCanvasTypeToEntityType(entityType);
-
-  // Map canvas property keys sang PropertySchema keys
-  const keyMap: Record<string, string> = {
-    color: "strokeColor",
-    lineWidth: "strokeWidth",
-  };
-  const schemaKey = keyMap[key] || key;
-
-  // Validate qua PropertySchema
-  const result = propertySchema.validateProperty(mappedType, schemaKey, value);
-  return result;
-}
-
-/**
- * Validate tất cả updates cho canvas entity
- *
- * NOTE: Canvas entities có cấu trúc đơn giản hơn core entities:
- * - color (string) thay vì style.strokeColor
- * - lineWidth (number) thay vì style.strokeWidth
- * - layer (string) - ID của layer
- *
- * Validation cơ bản cho các trường này, không cần đi qua PropertySchema
- * vì PropertySchema được thiết kế cho core entities phức tạp hơn.
- */
-function validateCanvasUpdates(
-  entity: CanvasEntity,
-  updates: Partial<CanvasEntity>
-): {
-  valid: boolean;
-  errors: string[];
-  validatedUpdates: Partial<CanvasEntity>;
-} {
-  const errors: string[] = [];
-  const validatedUpdates: Partial<CanvasEntity> = {};
-
-  for (const [key, value] of Object.entries(updates)) {
-    // Skip core fields - always valid
-    if (key === "id" || key === "type" || key === "points") {
-      (validatedUpdates as Record<string, unknown>)[key] = value;
-      continue;
-    }
-
-    // Basic validation for canvas-specific properties
-    switch (key) {
-      case "color":
-        // Color should be a string (hex, rgb, etc.)
-        if (typeof value === "string" && value.length > 0) {
-          validatedUpdates.color = value;
-        } else {
-          validatedUpdates.color = "#ffffff"; // Default white
-        }
-        break;
-
-      case "lineWidth":
-        // LineWidth should be a positive number
-        if (typeof value === "number" && value > 0) {
-          validatedUpdates.lineWidth = value;
-        } else {
-          validatedUpdates.lineWidth = 2; // Default
-        }
-        break;
-
-      case "layer":
-        // Layer ID - any string is valid
-        if (typeof value === "string") {
-          validatedUpdates.layer = value;
-        }
-        break;
-
-      case "selected":
-      case "locked":
-      case "visible":
-        // Boolean flags
-        (validatedUpdates as Record<string, unknown>)[key] = Boolean(value);
-        break;
-
-      default:
-        // Accept other properties as-is
-        (validatedUpdates as Record<string, unknown>)[key] = value;
-    }
-  }
-
-  return {
-    valid: true, // Always valid after coercion
-    errors,
-    validatedUpdates,
-  };
-}
+// Re-export transform commands for backward compatibility (STEP-5.20)
+export {
+  MoveCanvasEntitiesCommand,
+  RotateCanvasEntitiesCommand,
+  MirrorCanvasEntitiesCommand,
+  ScaleCanvasEntitiesCommand,
+  CopyCanvasEntitiesCommand,
+} from "./canvasTransformCommands";
 
 // ==================== ADD ENTITY ====================
 
@@ -210,7 +85,7 @@ export class AddCanvasEntityCommand implements ICommand {
     // ĐIỀU KIỆN 2: Validate entity properties
     const validation = validateCanvasUpdates(
       this.entity, // Use self as reference for type
-      this.entity // Validate all properties
+      this.entity, // Validate all properties
     );
     if (!validation.valid) {
       return {
@@ -273,6 +148,11 @@ export class DeleteCanvasEntitiesCommand implements ICommand {
       const entity = canvasContext.document.getCanvasEntity(id);
       if (entity) {
         this.deletedEntities.push({ ...entity });
+
+        // ========== ENTITY GEOMETRY LIFECYCLE ==========
+        // TRỤC SỐNG: Trước khi xóa entity, detach all dimensions referencing it
+        canvasContext.document.handleEntityDeleted(id);
+
         canvasContext.document.deleteCanvasEntity(id);
       }
     }
@@ -294,6 +174,10 @@ export class DeleteCanvasEntitiesCommand implements ICommand {
     for (const entity of this.deletedEntities) {
       canvasContext.document.addCanvasEntity(entity);
     }
+
+    // ========== ENTITY GEOMETRY LIFECYCLE ==========
+    // TRỤC SỐNG: Sau khi restore entities, commit để dimensions re-attach
+    canvasContext.document.commitEntitiesGeometryChange(this.ids);
   }
 
   getDescription(): string {
@@ -301,22 +185,18 @@ export class DeleteCanvasEntitiesCommand implements ICommand {
   }
 }
 
-// ==================== MOVE ENTITIES ====================
+// ==================== NEW DOCUMENT (CLEAR ALL) ====================
 
-export class MoveCanvasEntitiesCommand implements ICommand {
-  readonly name = "MOVE_CANVAS_ENTITIES";
+/**
+ * STEP-2: NewDocumentCommand — clears all canvas entities with undo support.
+ * Unlike raw engine.removeEntity() loops, this goes through History.
+ */
+export class NewDocumentCommand implements ICommand {
+  readonly name = "NEW_DOCUMENT";
   readonly canUndo = true;
 
-  private ids: string[];
-  private dx: number;
-  private dy: number;
-  private originalPositions: Map<string, CanvasPoint[]> = new Map();
-
-  constructor(ids: string | string[], dx: number, dy: number) {
-    this.ids = Array.isArray(ids) ? ids : [ids];
-    this.dx = dx;
-    this.dy = dy;
-  }
+  private savedEntities: CanvasEntity[] = [];
+  private savedSelectedIds: string[] = [];
 
   execute(context: CommandContext): CommandResult {
     const canvasContext = context as CanvasCommandContext;
@@ -324,47 +204,51 @@ export class MoveCanvasEntitiesCommand implements ICommand {
       return { success: false, message: "No document available" };
     }
 
-    // Lưu vị trí gốc và di chuyển
-    this.originalPositions.clear();
-    for (const id of this.ids) {
-      const entity = canvasContext.document.getCanvasEntity(id);
-      if (entity) {
-        // Lưu vị trí gốc
-        this.originalPositions.set(
-          id,
-          entity.points.map((p: CanvasPoint) => ({ ...p }))
-        );
+    // Save all entities + selection for undo
+    this.savedEntities = canvasContext.document
+      .getAllCanvasEntities()
+      .map((e) => ({ ...e }));
+    this.savedSelectedIds = [...canvasContext.document.getCanvasSelectedIds()];
 
-        // Di chuyển
-        const newPoints = entity.points.map((p: CanvasPoint) => ({
-          x: p.x + this.dx,
-          y: p.y + this.dy,
-        }));
-        canvasContext.document.updateCanvasEntity(id, { points: newPoints });
-      }
+    // Detach dimensions before deleting (ENTITY GEOMETRY LIFECYCLE)
+    for (const entity of this.savedEntities) {
+      canvasContext.document.handleEntityDeleted(entity.id);
     }
+
+    // Clear everything
+    canvasContext.document.clearCanvasEntities();
 
     return {
       success: true,
-      message: `Moved ${this.originalPositions.size} entity(s) by (${this.dx}, ${this.dy})`,
-      data: { ids: this.ids, dx: this.dx, dy: this.dy },
+      message: `New document — cleared ${this.savedEntities.length} entity(s)`,
     };
   }
 
   undo(context: CommandContext): void {
     const canvasContext = context as CanvasCommandContext;
-    if (!canvasContext.document) {
-      return;
+    if (!canvasContext.document) return;
+
+    // Restore all entities
+    for (const entity of this.savedEntities) {
+      canvasContext.document.addCanvasEntity(entity);
     }
 
-    // Khôi phục vị trí gốc
-    for (const [id, points] of this.originalPositions) {
-      canvasContext.document.updateCanvasEntity(id, { points });
+    // Restore selection
+    if (this.savedSelectedIds.length > 0) {
+      canvasContext.document.selectCanvasEntities(this.savedSelectedIds);
     }
+
+    // Re-attach dimensions (ENTITY GEOMETRY LIFECYCLE)
+    const ids = this.savedEntities.map((e) => e.id);
+    canvasContext.document.commitEntitiesGeometryChange(ids);
+  }
+
+  redo(context: CommandContext): CommandResult {
+    return this.execute(context);
   }
 
   getDescription(): string {
-    return `Move ${this.ids.length} entity(s)`;
+    return "New Document";
   }
 }
 
@@ -412,7 +296,7 @@ export class UpdateCanvasEntityCommand implements ICommand {
     // Lưu giá trị cũ để undo
     this.previousValues = {};
     for (const key of Object.keys(
-      this.validatedUpdates
+      this.validatedUpdates,
     ) as (keyof CanvasEntity)[]) {
       if (key === "points") {
         this.previousValues.points = entity.points.map((p: CanvasPoint) => ({
@@ -425,6 +309,12 @@ export class UpdateCanvasEntityCommand implements ICommand {
 
     // Áp dụng validated updates
     canvasContext.document.updateCanvasEntity(this.id, this.validatedUpdates);
+
+    // ========== ENTITY GEOMETRY LIFECYCLE ==========
+    // TRỤC SỐNG: Nếu points được update, phải commit geometry change
+    if (this.validatedUpdates.points) {
+      canvasContext.document.commitEntitiesGeometryChange([this.id]);
+    }
 
     return {
       success: true,
@@ -440,6 +330,12 @@ export class UpdateCanvasEntityCommand implements ICommand {
     }
 
     canvasContext.document.updateCanvasEntity(this.id, this.previousValues);
+
+    // ========== ENTITY GEOMETRY LIFECYCLE ==========
+    // TRỤC SỐNG: Nếu points được restore, phải commit geometry change
+    if (this.previousValues.points) {
+      canvasContext.document.commitEntitiesGeometryChange([this.id]);
+    }
   }
 
   getDescription(): string {
@@ -528,14 +424,16 @@ export class BatchAddCanvasEntitiesCommand implements ICommand {
 }
 
 // ==================== SELECT ENTITIES ====================
-// Selection không cần undo - chỉ là UI state
+// Selection có undo — khôi phục selection cũ khi Ctrl+Z
 
 export class SelectCanvasEntitiesCommand implements ICommand {
   readonly name = "SELECT_CANVAS_ENTITIES";
-  readonly canUndo = false; // Selection không cần undo
+  readonly canUndo = true;
 
   private ids: string[];
   private additive: boolean;
+  /** Previous selection state for undo */
+  private previousSelectedIds: string[] = [];
 
   constructor(ids: string[], additive = false) {
     this.ids = ids;
@@ -548,6 +446,9 @@ export class SelectCanvasEntitiesCommand implements ICommand {
       return { success: false, message: "No document available" };
     }
 
+    // Save previous selection for undo
+    this.previousSelectedIds = canvasContext.document.getCanvasSelectedIds();
+
     canvasContext.document.selectCanvasEntities(this.ids, this.additive);
 
     return {
@@ -557,8 +458,19 @@ export class SelectCanvasEntitiesCommand implements ICommand {
     };
   }
 
-  undo(): void {
-    // Selection không cần undo
+  undo(context: CommandContext): void {
+    const canvasContext = context as CanvasCommandContext;
+    if (!canvasContext.document) return;
+
+    // Restore previous selection
+    canvasContext.document.clearCanvasSelection();
+    if (this.previousSelectedIds.length > 0) {
+      canvasContext.document.selectCanvasEntities(this.previousSelectedIds);
+    }
+  }
+
+  redo(context: CommandContext): CommandResult {
+    return this.execute(context);
   }
 
   getDescription(): string {
@@ -570,13 +482,19 @@ export class SelectCanvasEntitiesCommand implements ICommand {
 
 export class ClearCanvasSelectionCommand implements ICommand {
   readonly name = "CLEAR_CANVAS_SELECTION";
-  readonly canUndo = false;
+  readonly canUndo = true;
+
+  /** Previous selection state for undo */
+  private previousSelectedIds: string[] = [];
 
   execute(context: CommandContext): CommandResult {
     const canvasContext = context as CanvasCommandContext;
     if (!canvasContext.document) {
       return { success: false, message: "No document available" };
     }
+
+    // Save previous selection for undo
+    this.previousSelectedIds = canvasContext.document.getCanvasSelectedIds();
 
     canvasContext.document.clearCanvasSelection();
 
@@ -586,8 +504,18 @@ export class ClearCanvasSelectionCommand implements ICommand {
     };
   }
 
-  undo(): void {
-    // Clear selection không cần undo
+  undo(context: CommandContext): void {
+    const canvasContext = context as CanvasCommandContext;
+    if (!canvasContext.document) return;
+
+    // Restore previous selection
+    if (this.previousSelectedIds.length > 0) {
+      canvasContext.document.selectCanvasEntities(this.previousSelectedIds);
+    }
+  }
+
+  redo(context: CommandContext): CommandResult {
+    return this.execute(context);
   }
 
   getDescription(): string {
@@ -595,610 +523,9 @@ export class ClearCanvasSelectionCommand implements ICommand {
   }
 }
 
-// ==================== ROTATE ENTITIES ====================
-
-/**
- * Xoay canvas entities quanh một điểm tâm
- */
-export class RotateCanvasEntitiesCommand implements ICommand {
-  readonly name = "ROTATE_CANVAS_ENTITIES";
-  readonly canUndo = true;
-
-  private ids: string[];
-  private center: CanvasPoint;
-  private angle: number; // radians
-  private originalPoints: Map<string, CanvasPoint[]> = new Map();
-
-  constructor(ids: string[], center: CanvasPoint, angle: number) {
-    this.ids = ids;
-    this.center = center;
-    this.angle = angle;
-  }
-
-  private rotatePoint(point: CanvasPoint): CanvasPoint {
-    const cos = Math.cos(this.angle);
-    const sin = Math.sin(this.angle);
-    const dx = point.x - this.center.x;
-    const dy = point.y - this.center.y;
-    return {
-      x: this.center.x + dx * cos - dy * sin,
-      y: this.center.y + dx * sin + dy * cos,
-    };
-  }
-
-  execute(context: CommandContext): CommandResult {
-    const canvasContext = context as CanvasCommandContext;
-    if (!canvasContext.document) {
-      return { success: false, message: "No document available" };
-    }
-
-    this.originalPoints.clear();
-    for (const id of this.ids) {
-      const entity = canvasContext.document.getCanvasEntity(id);
-      if (entity) {
-        // Lưu vị trí gốc
-        this.originalPoints.set(
-          id,
-          entity.points.map((p: CanvasPoint) => ({ ...p }))
-        );
-
-        // Xoay
-        const newPoints = entity.points.map((p: CanvasPoint) =>
-          this.rotatePoint(p)
-        );
-        canvasContext.document.updateCanvasEntity(id, { points: newPoints });
-      }
-    }
-
-    const angleDeg = ((this.angle * 180) / Math.PI).toFixed(1);
-    return {
-      success: true,
-      message: `Rotated ${this.originalPoints.size} entity(s) by ${angleDeg}°`,
-      data: { ids: this.ids, angle: this.angle },
-    };
-  }
-
-  undo(context: CommandContext): void {
-    const canvasContext = context as CanvasCommandContext;
-    if (!canvasContext.document) {
-      return;
-    }
-
-    for (const [id, points] of this.originalPoints) {
-      canvasContext.document.updateCanvasEntity(id, { points });
-    }
-  }
-
-  getDescription(): string {
-    return `Rotate ${this.ids.length} entity(s)`;
-  }
-}
-
-// ==================== MIRROR ENTITIES ====================
-
-/**
- * Mirror canvas entities qua một trục (2 điểm)
- */
-export class MirrorCanvasEntitiesCommand implements ICommand {
-  readonly name = "MIRROR_CANVAS_ENTITIES";
-  readonly canUndo = true;
-
-  private sourceIds: string[];
-  private axisStart: CanvasPoint;
-  private axisEnd: CanvasPoint;
-  private deleteOriginal: boolean;
-  private originalPoints: Map<string, CanvasPoint[]> = new Map();
-  private copiedEntities: CanvasEntity[] = [];
-
-  constructor(
-    sourceIds: string[],
-    axisStart: CanvasPoint,
-    axisEnd: CanvasPoint,
-    deleteOriginal = false
-  ) {
-    this.sourceIds = sourceIds;
-    this.axisStart = axisStart;
-    this.axisEnd = axisEnd;
-    this.deleteOriginal = deleteOriginal;
-  }
-
-  private mirrorPoint(point: CanvasPoint): CanvasPoint {
-    // Mirror point across line defined by axisStart and axisEnd
-    const dx = this.axisEnd.x - this.axisStart.x;
-    const dy = this.axisEnd.y - this.axisStart.y;
-    const len2 = dx * dx + dy * dy;
-
-    if (len2 === 0) return point;
-
-    // Project point onto line
-    const t =
-      ((point.x - this.axisStart.x) * dx + (point.y - this.axisStart.y) * dy) /
-      len2;
-    const projX = this.axisStart.x + t * dx;
-    const projY = this.axisStart.y + t * dy;
-
-    // Mirror = 2 * projection - original
-    return {
-      x: 2 * projX - point.x,
-      y: 2 * projY - point.y,
-    };
-  }
-
-  execute(context: CommandContext): CommandResult {
-    const canvasContext = context as CanvasCommandContext;
-    if (!canvasContext.document) {
-      return { success: false, message: "No document available" };
-    }
-
-    this.originalPoints.clear();
-    this.copiedEntities = [];
-
-    for (const id of this.sourceIds) {
-      const entity = canvasContext.document.getCanvasEntity(id);
-      if (entity) {
-        if (this.deleteOriginal) {
-          // Mirror in place
-          this.originalPoints.set(
-            id,
-            entity.points.map((p: CanvasPoint) => ({ ...p }))
-          );
-          const newPoints = entity.points.map((p: CanvasPoint) =>
-            this.mirrorPoint(p)
-          );
-          canvasContext.document.updateCanvasEntity(id, { points: newPoints });
-        } else {
-          // Create mirrored copy
-          const mirroredPoints = entity.points.map((p: CanvasPoint) =>
-            this.mirrorPoint(p)
-          );
-          const copied: CanvasEntity = {
-            ...entity,
-            id: generateCanvasId(),
-            selected: false,
-            points: mirroredPoints,
-          };
-          canvasContext.document.addCanvasEntity(copied);
-          this.copiedEntities.push(copied);
-        }
-      }
-    }
-
-    return {
-      success: true,
-      message: `Mirrored ${this.sourceIds.length} entity(s)`,
-      data: { ids: this.sourceIds },
-    };
-  }
-
-  undo(context: CommandContext): void {
-    const canvasContext = context as CanvasCommandContext;
-    if (!canvasContext.document) {
-      return;
-    }
-
-    if (this.deleteOriginal) {
-      // Restore original positions
-      for (const [id, points] of this.originalPoints) {
-        canvasContext.document.updateCanvasEntity(id, { points });
-      }
-    } else {
-      // Delete copied entities
-      for (const entity of this.copiedEntities) {
-        canvasContext.document.deleteCanvasEntity(entity.id);
-      }
-    }
-  }
-
-  getDescription(): string {
-    return `Mirror ${this.sourceIds.length} entity(s)`;
-  }
-}
-
-// ==================== SCALE ENTITIES ====================
-
-/**
- * Scale canvas entities từ một điểm tâm
- */
-export class ScaleCanvasEntitiesCommand implements ICommand {
-  readonly name = "SCALE_CANVAS_ENTITIES";
-  readonly canUndo = true;
-
-  private ids: string[];
-  private center: CanvasPoint;
-  private scaleX: number;
-  private scaleY: number;
-  private originalPoints: Map<string, CanvasPoint[]> = new Map();
-
-  constructor(
-    ids: string[],
-    center: CanvasPoint,
-    scaleX: number,
-    scaleY?: number
-  ) {
-    this.ids = ids;
-    this.center = center;
-    this.scaleX = scaleX;
-    this.scaleY = scaleY ?? scaleX;
-  }
-
-  private scalePoint(point: CanvasPoint): CanvasPoint {
-    return {
-      x: this.center.x + (point.x - this.center.x) * this.scaleX,
-      y: this.center.y + (point.y - this.center.y) * this.scaleY,
-    };
-  }
-
-  execute(context: CommandContext): CommandResult {
-    const canvasContext = context as CanvasCommandContext;
-    if (!canvasContext.document) {
-      return { success: false, message: "No document available" };
-    }
-
-    this.originalPoints.clear();
-    for (const id of this.ids) {
-      const entity = canvasContext.document.getCanvasEntity(id);
-      if (entity) {
-        // Lưu vị trí gốc
-        this.originalPoints.set(
-          id,
-          entity.points.map((p: CanvasPoint) => ({ ...p }))
-        );
-
-        // Scale
-        const newPoints = entity.points.map((p: CanvasPoint) =>
-          this.scalePoint(p)
-        );
-        canvasContext.document.updateCanvasEntity(id, { points: newPoints });
-      }
-    }
-
-    return {
-      success: true,
-      message: `Scaled ${
-        this.originalPoints.size
-      } entity(s) by ${this.scaleX.toFixed(2)}`,
-      data: { ids: this.ids, scaleX: this.scaleX, scaleY: this.scaleY },
-    };
-  }
-
-  undo(context: CommandContext): void {
-    const canvasContext = context as CanvasCommandContext;
-    if (!canvasContext.document) {
-      return;
-    }
-
-    for (const [id, points] of this.originalPoints) {
-      canvasContext.document.updateCanvasEntity(id, { points });
-    }
-  }
-
-  getDescription(): string {
-    return `Scale ${this.ids.length} entity(s)`;
-  }
-}
-
-// ==================== COPY ENTITIES ====================
-
-/**
- * ĐIỀU KIỆN 2: PropertySchema là luật tối cao
- * Copy command cũng validate entities sau khi copy
- */
-export class CopyCanvasEntitiesCommand implements ICommand {
-  readonly name = "COPY_CANVAS_ENTITIES";
-  readonly canUndo = true;
-
-  private sourceIds: string[];
-  private offset: { dx: number; dy: number };
-  private copiedEntities: CanvasEntity[] = [];
-
-  constructor(sourceIds: string[], offset = { dx: 20, dy: 20 }) {
-    this.sourceIds = sourceIds;
-    this.offset = offset;
-  }
-
-  execute(context: CommandContext): CommandResult {
-    const canvasContext = context as CanvasCommandContext;
-    if (!canvasContext.document) {
-      return { success: false, message: "No document available" };
-    }
-
-    this.copiedEntities = [];
-    const allErrors: string[] = [];
-
-    for (const id of this.sourceIds) {
-      const source = canvasContext.document.getCanvasEntity(id);
-      if (source) {
-        const copied: CanvasEntity = {
-          ...source,
-          id: generateCanvasId(),
-          selected: false,
-          points: source.points.map((p: CanvasPoint) => ({
-            x: p.x + this.offset.dx,
-            y: p.y + this.offset.dy,
-          })),
-        };
-
-        // ĐIỀU KIỆN 2: Validate copied entity
-        const validation = validateCanvasUpdates(copied, copied);
-        if (!validation.valid) {
-          allErrors.push(`Copy of ${id}: ${validation.errors.join(", ")}`);
-        } else {
-          const validatedCopy = { ...copied, ...validation.validatedUpdates };
-          canvasContext.document.addCanvasEntity(validatedCopy);
-          this.copiedEntities.push(validatedCopy);
-        }
-      }
-    }
-
-    if (allErrors.length > 0) {
-      return {
-        success: false,
-        message: `Copy validation failed: ${allErrors.join("; ")}`,
-      };
-    }
-
-    return {
-      success: true,
-      message: `Copied ${this.copiedEntities.length} entity(s)`,
-      data: { copiedEntities: this.copiedEntities },
-    };
-  }
-
-  undo(context: CommandContext): void {
-    const canvasContext = context as CanvasCommandContext;
-    if (!canvasContext.document) {
-      return;
-    }
-
-    for (const entity of this.copiedEntities) {
-      canvasContext.document.deleteCanvasEntity(entity.id);
-    }
-  }
-
-  getDescription(): string {
-    return `Copy ${this.sourceIds.length} entity(s)`;
-  }
-}
-
-// ==================== OFFSET ENTITY ====================
-
-/**
- * Offset canvas entity - tạo đường song song
- * Hỗ trợ: line, polyline, rect, circle
- */
-export class OffsetCanvasEntityCommand implements ICommand {
-  readonly name = "OFFSET_CANVAS_ENTITY";
-  readonly canUndo = true;
-
-  private sourceId: string;
-  private distance: number;
-  private throughPoint: CanvasPoint; // Điểm xác định phía offset
-  private offsetEntity: CanvasEntity | null = null;
-
-  constructor(sourceId: string, distance: number, throughPoint: CanvasPoint) {
-    this.sourceId = sourceId;
-    this.distance = distance;
-    this.throughPoint = throughPoint;
-  }
-
-  execute(context: CommandContext): CommandResult {
-    const canvasContext = context as CanvasCommandContext;
-    if (!canvasContext.document) {
-      return { success: false, message: "No document available" };
-    }
-
-    const source = canvasContext.document.getCanvasEntity(this.sourceId);
-    if (!source) {
-      return { success: false, message: "Source entity not found" };
-    }
-
-    // Tạo offset entity dựa trên loại
-    const offsetPoints = this.calculateOffsetPoints(source);
-    if (!offsetPoints || offsetPoints.length === 0) {
-      return { success: false, message: `Cannot offset ${source.type} entity` };
-    }
-
-    this.offsetEntity = {
-      ...source,
-      id: generateCanvasId(),
-      selected: false,
-      points: offsetPoints,
-    };
-
-    canvasContext.document.addCanvasEntity(this.offsetEntity);
-
-    return {
-      success: true,
-      message: `Created offset at distance ${this.distance}`,
-      data: { offsetEntity: this.offsetEntity },
-    };
-  }
-
-  private calculateOffsetPoints(source: CanvasEntity): CanvasPoint[] {
-    switch (source.type) {
-      case "line":
-        return this.offsetLine(source.points);
-      case "polyline":
-        return this.offsetPolyline(source.points);
-      case "rect":
-        return this.offsetRect(source.points);
-      case "circle":
-        return this.offsetCircle(source.points);
-      default:
-        return [];
-    }
-  }
-
-  private offsetLine(points: CanvasPoint[]): CanvasPoint[] {
-    if (points.length < 2) return [];
-
-    const start = points[0];
-    const end = points[1];
-
-    // Tính vector direction và perpendicular
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    if (len === 0) return [];
-
-    const dirX = dx / len;
-    const dirY = dy / len;
-
-    // Perpendicular vector (rotate 90°)
-    const perpX = -dirY;
-    const perpY = dirX;
-
-    // Xác định phía offset dựa trên throughPoint
-    const midX = (start.x + end.x) / 2;
-    const midY = (start.y + end.y) / 2;
-    const toThroughX = this.throughPoint.x - midX;
-    const toThroughY = this.throughPoint.y - midY;
-    const side = toThroughX * perpX + toThroughY * perpY > 0 ? 1 : -1;
-
-    // Offset points
-    const offsetX = perpX * this.distance * side;
-    const offsetY = perpY * this.distance * side;
-
-    return [
-      { x: start.x + offsetX, y: start.y + offsetY },
-      { x: end.x + offsetX, y: end.y + offsetY },
-    ];
-  }
-
-  private offsetPolyline(points: CanvasPoint[]): CanvasPoint[] {
-    if (points.length < 2) return [];
-
-    const offsetPoints: CanvasPoint[] = [];
-
-    // Tính trung tâm để xác định phía offset
-    let centerX = 0,
-      centerY = 0;
-    for (const p of points) {
-      centerX += p.x;
-      centerY += p.y;
-    }
-    centerX /= points.length;
-    centerY /= points.length;
-
-    // Vector từ center đến throughPoint để xác định phía
-    const toThroughX = this.throughPoint.x - centerX;
-    const toThroughY = this.throughPoint.y - centerY;
-    void toThroughX; // Used for side determination
-    void toThroughY; // Used for side determination
-
-    for (let i = 0; i < points.length; i++) {
-      let perpX = 0,
-        perpY = 0;
-      let count = 0;
-
-      // Segment trước
-      if (i > 0) {
-        const dx = points[i].x - points[i - 1].x;
-        const dy = points[i].y - points[i - 1].y;
-        const len = Math.sqrt(dx * dx + dy * dy);
-        if (len > 0) {
-          perpX += -dy / len;
-          perpY += dx / len;
-          count++;
-        }
-      }
-
-      // Segment sau
-      if (i < points.length - 1) {
-        const dx = points[i + 1].x - points[i].x;
-        const dy = points[i + 1].y - points[i].y;
-        const len = Math.sqrt(dx * dx + dy * dy);
-        if (len > 0) {
-          perpX += -dy / len;
-          perpY += dx / len;
-          count++;
-        }
-      }
-
-      if (count > 0) {
-        perpX /= count;
-        perpY /= count;
-        const perpLen = Math.sqrt(perpX * perpX + perpY * perpY);
-        if (perpLen > 0) {
-          perpX /= perpLen;
-          perpY /= perpLen;
-        }
-      }
-
-      // Xác định side
-      const side = toThroughX * perpX + toThroughY * perpY > 0 ? 1 : -1;
-
-      offsetPoints.push({
-        x: points[i].x + perpX * this.distance * side,
-        y: points[i].y + perpY * this.distance * side,
-      });
-    }
-
-    return offsetPoints;
-  }
-
-  private offsetRect(points: CanvasPoint[]): CanvasPoint[] {
-    if (points.length < 2) return [];
-
-    const p1 = points[0];
-    const p2 = points[1];
-
-    // Check if throughPoint is outside rect
-    const isOutside =
-      this.throughPoint.x < Math.min(p1.x, p2.x) ||
-      this.throughPoint.x > Math.max(p1.x, p2.x) ||
-      this.throughPoint.y < Math.min(p1.y, p2.y) ||
-      this.throughPoint.y > Math.max(p1.y, p2.y);
-
-    const expand = isOutside ? 1 : -1;
-
-    // Offset rect (expand outward or shrink inward)
-    const dx = p2.x > p1.x ? this.distance * expand : -this.distance * expand;
-    const dy = p2.y > p1.y ? this.distance * expand : -this.distance * expand;
-
-    return [
-      { x: p1.x - dx, y: p1.y - dy },
-      { x: p2.x + dx, y: p2.y + dy },
-    ];
-  }
-
-  private offsetCircle(points: CanvasPoint[]): CanvasPoint[] {
-    if (points.length < 2) return [];
-
-    const center = points[0];
-    const radiusPoint = points[1]; // { x: radius, y: 0 } typically
-
-    // Xác định expand hay shrink
-    const distToThrough = Math.sqrt(
-      Math.pow(this.throughPoint.x - center.x, 2) +
-        Math.pow(this.throughPoint.y - center.y, 2)
-    );
-    const currentRadius = radiusPoint.x;
-
-    // If throughPoint is outside circle, expand; otherwise shrink
-    const expand = distToThrough > currentRadius ? 1 : -1;
-    const newRadius = Math.max(0.1, currentRadius + this.distance * expand);
-
-    return [center, { x: newRadius, y: 0 }];
-  }
-
-  undo(context: CommandContext): void {
-    const canvasContext = context as CanvasCommandContext;
-    if (!canvasContext.document || !this.offsetEntity) {
-      return;
-    }
-
-    canvasContext.document.deleteCanvasEntity(this.offsetEntity.id);
-  }
-
-  getDescription(): string {
-    return `Offset entity by ${this.distance}`;
-  }
-}
-
 // ==================== EXPORTS ====================
 
-// Export validation helpers for external use
+// Export validation helpers for external use (from canvasCommandUtils)
 export {
   mapCanvasTypeToEntityType,
   validateCanvasProperty,

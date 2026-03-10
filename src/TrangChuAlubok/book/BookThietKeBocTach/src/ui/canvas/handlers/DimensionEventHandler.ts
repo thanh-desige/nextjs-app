@@ -205,8 +205,26 @@ export function isPointNearCircleEdge(
 
 // ==================== QDIM Helpers ====================
 
+// ========================================================================
+// 2D FIRST, 3D READY ARCHITECTURE - LEGACY DIMENSION SUPPORT
+// ========================================================================
+// RECT và CIRCLE được phép tạo dimension nhưng là LEGACY (non-associative)
+// Legacy dimensions: display-only, không index, không lifecycle
+// Cờ này là tạm thời, sẽ bị loại bỏ khi kiến trúc EDGE-based geometry
+// được triển khai ở Phase 3D.
+// ========================================================================
+
+/**
+ * Check if entity type requires LEGACY dimension treatment
+ * Legacy entities: RECT, CIRCLE - container/UI primitives, not geometric primitives
+ */
+export function isLegacyEntityType(entityType: string): boolean {
+  return entityType === "rect" || entityType === "circle";
+}
+
 /**
  * Extract dimension points from selected entities
+ * RECT/CIRCLE are allowed but dimensions will be marked as LEGACY
  */
 export function extractQdimPoints(
   entities: { type: string; points: Point[] }[]
@@ -218,7 +236,8 @@ export function extractQdimPoints(
       // Add all vertices
       allPoints.push(...entity.points);
     } else if (entity.type === "rect" && entity.points.length >= 2) {
-      // Add all 4 corners
+      // LEGACY: Add all 4 corners
+      // Note: Dimensions on RECT will be marked as LEGACY (display-only, not lifecycle-managed)
       const [p1, p2] = entity.points;
       allPoints.push({ ...p1 });
       allPoints.push({ x: p2.x, y: p1.y });
@@ -229,6 +248,15 @@ export function extractQdimPoints(
 
   // Remove duplicate points
   return removeDuplicatePoints(allPoints);
+}
+
+/**
+ * Check if any entity in QDIM selection is a LEGACY type
+ */
+export function hasLegacyEntities(
+  entities: { type: string; points: Point[] }[]
+): boolean {
+  return entities.some((e) => isLegacyEntityType(e.type));
 }
 
 /**

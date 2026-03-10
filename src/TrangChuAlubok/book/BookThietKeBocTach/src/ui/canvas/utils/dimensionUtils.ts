@@ -294,3 +294,392 @@ export const dimensionIntersectsRect = (
 
   return false;
 };
+
+// ==================== ASSOCIATIVE DIMENSION UTILITIES ====================
+
+import type { DimensionAttachment, CadEntity } from "./types";
+import type { EntityReference } from "../../../core/dimensions/DimensionManager";
+
+/**
+ * Resolve EntityReference to current entity point
+ * EntityReference is used by DimensionManager for associative dimensions
+ * Returns the actual world coordinate based on entity and snap info
+ */
+export const resolveEntityReference = (
+  ref: EntityReference,
+  entities: CadEntity[]
+): Point | null => {
+  const entity = entities.find((e) => e.id === ref.entityId);
+  if (!entity) return null;
+
+  // Handle different snap types
+  switch (ref.snapType) {
+    case "center":
+      // For circles/arcs, return center
+      if (entity.type === "circle" || entity.type === "arc") {
+        return { ...entity.points[0] }; // Center point
+      }
+      // For rectangles/polylines, return centroid
+      if (entity.points.length >= 2) {
+        const sumX = entity.points.reduce((s, p) => s + p.x, 0);
+        const sumY = entity.points.reduce((s, p) => s + p.y, 0);
+        return {
+          x: sumX / entity.points.length,
+          y: sumY / entity.points.length,
+        };
+      }
+      break;
+
+    case "midpoint":
+      // For lines, return midpoint of first segment
+      if (entity.points.length >= 2) {
+        const p1 = entity.points[0];
+        const p2 = entity.points[1];
+        return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      }
+      break;
+
+    case "quadrant":
+      // For circles, return quadrant point based on original point angle
+      if (entity.type === "circle" && entity.radius) {
+        const center = entity.points[0];
+        // Calculate angle from original ref point
+        const angle = Math.atan2(
+          ref.point.y - center.y,
+          ref.point.x - center.x
+        );
+        // Snap to nearest quadrant
+        const quadrantAngle = Math.round(angle / (Math.PI / 2)) * (Math.PI / 2);
+        return {
+          x: center.x + entity.radius * Math.cos(quadrantAngle),
+          y: center.y + entity.radius * Math.sin(quadrantAngle),
+        };
+      }
+      break;
+
+    case "endpoint":
+      // Return the endpoint - find which point on entity is closest to ref.point
+      if (entity.points.length > 0) {
+        let closestIdx = 0;
+        let closestDist = Infinity;
+        entity.points.forEach((p, idx) => {
+          const dist = Math.hypot(p.x - ref.point.x, p.y - ref.point.y);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestIdx = idx;
+          }
+        });
+        return { ...entity.points[closestIdx] };
+      }
+      break;
+
+    case "intersection":
+    case "nearest":
+    default:
+      // For these types, we need to recalculate based on current entity geometry
+      // For now, just return the stored point (will work for simple cases)
+      if (entity.points.length > 0) {
+        // Find closest point on entity
+        let closestIdx = 0;
+        let closestDist = Infinity;
+        entity.points.forEach((p, idx) => {
+          const dist = Math.hypot(p.x - ref.point.x, p.y - ref.point.y);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestIdx = idx;
+          }
+        });
+        return { ...entity.points[closestIdx] };
+      }
+      break;
+  }
+
+  return null;
+};
+
+/**
+ * Resolve attachment point from entity (legacy interface)
+ * Returns the actual world coordinate based on entity and attachment info
+ */
+export const resolveAttachmentPoint = (
+  attachment: DimensionAttachment,
+  entities: CadEntity[]
+): Point | null => {
+  const entity = entities.find((e) => e.id === attachment.entityId);
+  if (!entity) return null;
+
+  // Handle different snap types
+  switch (attachment.snapType) {
+    case "center":
+      // For circles/arcs, return center
+      if (entity.type === "circle" || entity.type === "arc") {
+        return entity.points[0]; // Center point
+      }
+      // For rectangles/polylines, return centroid
+      if (entity.points.length >= 2) {
+        const sumX = entity.points.reduce((s, p) => s + p.x, 0);
+        const sumY = entity.points.reduce((s, p) => s + p.y, 0);
+        return {
+          x: sumX / entity.points.length,
+          y: sumY / entity.points.length,
+        };
+      }
+      break;
+
+    case "midpoint":
+      // For lines, return midpoint
+      if (entity.points.length >= 2) {
+        const idx = Math.min(attachment.pointIndex, entity.points.length - 2);
+        const p1 = entity.points[idx];
+        const p2 = entity.points[idx + 1];
+        return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      }
+      break;
+
+    case "quadrant":
+      // For circles, return quadrant point
+      if (entity.type === "circle" && entity.radius) {
+        const center = entity.points[0];
+        const quadrants = [
+          { x: center.x + entity.radius, y: center.y }, // 0°
+          { x: center.x, y: center.y + entity.radius }, // 90°
+          { x: center.x - entity.radius, y: center.y }, // 180°
+          { x: center.x, y: center.y - entity.radius }, // 270°
+        ];
+        return quadrants[attachment.pointIndex % 4];
+      }
+      break;
+
+    case "endpoint":
+    default:
+      // Return specific point by index
+      if (entity.points.length > 0) {
+        const idx = Math.min(attachment.pointIndex, entity.points.length - 1);
+        return { ...entity.points[idx] };
+      }
+      break;
+  }
+
+  return null;
+};
+
+/**
+ * Check if dimension has entity references (is associative)
+ * Uses ref1/ref2/ref3 from DimensionManager
+ */
+export const isAssociativeDimension = (dim: DimensionEntity): boolean => {
+  // Check for ref1/ref2/ref3 (DimensionManager style)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const d = dim as any;
+  return !!(
+    d.ref1 ||
+    d.ref2 ||
+    d.ref3 ||
+    dim.attachment1 ||
+    dim.attachment2 ||
+    dim.attachment3
+  );
+};
+
+/**
+ * Update dimension points from entity references
+ * Call this after entities have moved to keep dimensions in sync
+ * Supports both ref1/ref2/ref3 (DimensionManager) and attachment1/attachment2/attachment3 (legacy)
+ */
+export const updateDimensionFromAttachments = (
+  dim: DimensionEntity,
+  entities: CadEntity[]
+): DimensionEntity => {
+  // Check if dimension has any entity references
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const d = dim as any;
+  const hasRefs = d.ref1 || d.ref2 || d.ref3;
+  const hasAttachments = dim.attachment1 || dim.attachment2 || dim.attachment3;
+
+  if (!hasRefs && !hasAttachments) return dim;
+
+  let updated = { ...dim };
+  let hasChanges = false;
+
+  // Priority: use ref1/ref2/ref3 (DimensionManager style) first
+  if (d.ref1) {
+    const newPoint1 = resolveEntityReference(d.ref1, entities);
+    if (
+      newPoint1 &&
+      (newPoint1.x !== dim.point1.x || newPoint1.y !== dim.point1.y)
+    ) {
+      updated.point1 = newPoint1;
+      hasChanges = true;
+    }
+  } else if (dim.attachment1) {
+    const newPoint1 = resolveAttachmentPoint(dim.attachment1, entities);
+    if (
+      newPoint1 &&
+      (newPoint1.x !== dim.point1.x || newPoint1.y !== dim.point1.y)
+    ) {
+      updated.point1 = newPoint1;
+      hasChanges = true;
+    }
+  }
+
+  if (d.ref2) {
+    const newPoint2 = resolveEntityReference(d.ref2, entities);
+    if (
+      newPoint2 &&
+      (newPoint2.x !== dim.point2.x || newPoint2.y !== dim.point2.y)
+    ) {
+      updated.point2 = newPoint2;
+      hasChanges = true;
+    }
+  } else if (dim.attachment2) {
+    const newPoint2 = resolveAttachmentPoint(dim.attachment2, entities);
+    if (
+      newPoint2 &&
+      (newPoint2.x !== dim.point2.x || newPoint2.y !== dim.point2.y)
+    ) {
+      updated.point2 = newPoint2;
+      hasChanges = true;
+    }
+  }
+
+  // Resolve ref3/attachment3 → point3 (for angular dimensions)
+  if (d.ref3 && dim.point3) {
+    const newPoint3 = resolveEntityReference(d.ref3, entities);
+    if (
+      newPoint3 &&
+      (newPoint3.x !== dim.point3.x || newPoint3.y !== dim.point3.y)
+    ) {
+      updated.point3 = newPoint3;
+      hasChanges = true;
+    }
+  } else if (dim.attachment3 && dim.point3) {
+    const newPoint3 = resolveAttachmentPoint(dim.attachment3, entities);
+    if (
+      newPoint3 &&
+      (newPoint3.x !== dim.point3.x || newPoint3.y !== dim.point3.y)
+    ) {
+      updated.point3 = newPoint3;
+      hasChanges = true;
+    }
+  }
+
+  // Recalculate value if points changed
+  if (hasChanges) {
+    if (dim.dimensionType === "radius" || dim.dimensionType === "diameter") {
+      // For radius/diameter, value is the radius itself
+      // (kept as-is, circle entity should update this)
+    } else {
+      // Calculate distance between points
+      const dx = updated.point2.x - updated.point1.x;
+      const dy = updated.point2.y - updated.point1.y;
+      updated.value = Math.sqrt(dx * dx + dy * dy);
+    }
+  }
+
+  return hasChanges ? updated : dim;
+};
+
+/**
+ * Update all associative dimensions after entities changed
+ * Returns updated dimensions array
+ */
+export const updateAssociativeDimensions = (
+  dimensions: DimensionEntity[],
+  entities: CadEntity[]
+): DimensionEntity[] => {
+  return dimensions.map((dim) => updateDimensionFromAttachments(dim, entities));
+};
+
+/**
+ * Find dimensions attached to a specific entity
+ * Used when entity is deleted to handle orphan dimensions
+ * Checks both ref1/ref2/ref3 (DimensionManager style) and attachment1/attachment2/attachment3 (legacy)
+ */
+export const findDimensionsAttachedToEntity = (
+  entityId: string,
+  dimensions: DimensionEntity[]
+): DimensionEntity[] => {
+  return dimensions.filter((dim) => {
+    const d = dim as any;
+
+    // Check DimensionManager style refs first
+    if (
+      d.ref1?.entityId === entityId ||
+      d.ref2?.entityId === entityId ||
+      d.ref3?.entityId === entityId
+    ) {
+      return true;
+    }
+
+    // Check legacy attachment fields
+    return (
+      dim.attachment1?.entityId === entityId ||
+      dim.attachment2?.entityId === entityId ||
+      dim.attachment3?.entityId === entityId
+    );
+  });
+};
+
+/**
+ * Detach dimension from deleted entity
+ * Converts associative dimension to dumb dimension (keeps current coordinates)
+ * Supports both ref1/ref2/ref3 (DimensionManager style) and attachment1/attachment2/attachment3 (legacy)
+ */
+export const detachDimensionFromEntity = (
+  dim: DimensionEntity,
+  deletedEntityId: string
+): DimensionEntity => {
+  const updated = { ...dim } as any;
+
+  // Clear DimensionManager style refs
+  if (updated.ref1?.entityId === deletedEntityId) {
+    delete updated.ref1;
+  }
+  if (updated.ref2?.entityId === deletedEntityId) {
+    delete updated.ref2;
+  }
+  if (updated.ref3?.entityId === deletedEntityId) {
+    delete updated.ref3;
+  }
+
+  // Clear legacy attachment fields
+  if (dim.attachment1?.entityId === deletedEntityId) {
+    delete updated.attachment1;
+  }
+  if (dim.attachment2?.entityId === deletedEntityId) {
+    delete updated.attachment2;
+  }
+  if (dim.attachment3?.entityId === deletedEntityId) {
+    delete updated.attachment3;
+  }
+
+  // If no attachments or refs left, mark as non-associative
+  const hasAnyRef =
+    updated.ref1 ||
+    updated.ref2 ||
+    updated.ref3 ||
+    updated.attachment1 ||
+    updated.attachment2 ||
+    updated.attachment3;
+  if (!hasAnyRef) {
+    updated.isAssociative = false;
+  }
+
+  return updated as DimensionEntity;
+};
+
+/**
+ * Create attachment from OSNAP result
+ * Call this when user snaps to an entity point while creating dimension
+ */
+export const createAttachmentFromSnap = (
+  entityId: string,
+  pointIndex: number,
+  snapType: DimensionAttachment["snapType"]
+): DimensionAttachment => {
+  return {
+    entityId,
+    pointIndex,
+    snapType: snapType || "endpoint",
+  };
+};

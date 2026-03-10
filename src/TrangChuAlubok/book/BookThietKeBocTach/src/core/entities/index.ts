@@ -38,6 +38,9 @@ export * from "./Circle";
 export * from "./Arc";
 export * from "./Ellipse";
 export * from "./Polyline";
+
+// Door Entity (Cửa trên canvas)
+export * from "./DoorEntity";
 export * from "./Text";
 export * from "./Dimension";
 

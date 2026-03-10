@@ -96,6 +96,15 @@ export interface TextGeometry {
   rotation: number; // Radians
 }
 
+/** DIMENSION: Start/end measurement points + text position + offset */
+export interface DimensionGeometry {
+  type: "DIMENSION";
+  startPoint: Point2D;
+  endPoint: Point2D;
+  textPosition: Point2D;
+  offset: number;
+}
+
 /** Union of all geometry types */
 export type EntityGeometry =
   | LineGeometry
@@ -104,7 +113,8 @@ export type EntityGeometry =
   | CircleGeometry
   | ArcGeometry
   | EllipseGeometry
-  | TextGeometry;
+  | TextGeometry
+  | DimensionGeometry;
 
 // ==================== Entity Style ====================
 
@@ -186,45 +196,51 @@ export interface UnifiedEntity<G extends EntityGeometry = EntityGeometry> {
 // ==================== Type Guards ====================
 
 export function isLineEntity(
-  entity: UnifiedEntity
+  entity: UnifiedEntity,
 ): entity is UnifiedEntity<LineGeometry> {
   return entity.geometry.type === "LINE";
 }
 
 export function isPolylineEntity(
-  entity: UnifiedEntity
+  entity: UnifiedEntity,
 ): entity is UnifiedEntity<PolylineGeometry> {
   return entity.geometry.type === "POLYLINE";
 }
 
 export function isRectEntity(
-  entity: UnifiedEntity
+  entity: UnifiedEntity,
 ): entity is UnifiedEntity<RectGeometry> {
   return entity.geometry.type === "RECT";
 }
 
 export function isCircleEntity(
-  entity: UnifiedEntity
+  entity: UnifiedEntity,
 ): entity is UnifiedEntity<CircleGeometry> {
   return entity.geometry.type === "CIRCLE";
 }
 
 export function isArcEntity(
-  entity: UnifiedEntity
+  entity: UnifiedEntity,
 ): entity is UnifiedEntity<ArcGeometry> {
   return entity.geometry.type === "ARC";
 }
 
 export function isEllipseEntity(
-  entity: UnifiedEntity
+  entity: UnifiedEntity,
 ): entity is UnifiedEntity<EllipseGeometry> {
   return entity.geometry.type === "ELLIPSE";
 }
 
 export function isTextEntity(
-  entity: UnifiedEntity
+  entity: UnifiedEntity,
 ): entity is UnifiedEntity<TextGeometry> {
   return entity.geometry.type === "TEXT";
+}
+
+export function isDimensionEntity(
+  entity: UnifiedEntity,
+): entity is UnifiedEntity<DimensionGeometry> {
+  return entity.geometry.type === "DIMENSION";
 }
 
 // ==================== Bounding Box ====================
@@ -250,7 +266,7 @@ export function generateEntityId(): string {
 export function createLineEntity(
   start: Point2D,
   end: Point2D,
-  options?: Partial<EntityStyle & { layerId: string; name: string }>
+  options?: Partial<EntityStyle & { layerId: string; name: string }>,
 ): UnifiedEntity<LineGeometry> {
   return {
     id: generateEntityId(),
@@ -273,7 +289,7 @@ export function createLineEntity(
 export function createPolylineEntity(
   points: Point2D[],
   closed = false,
-  options?: Partial<EntityStyle & { layerId: string; name: string }>
+  options?: Partial<EntityStyle & { layerId: string; name: string }>,
 ): UnifiedEntity<PolylineGeometry> {
   return {
     id: generateEntityId(),
@@ -298,7 +314,7 @@ export function createRectEntity(
   width: number,
   height: number,
   rotation = 0,
-  options?: Partial<EntityStyle & { layerId: string; name: string }>
+  options?: Partial<EntityStyle & { layerId: string; name: string }>,
 ): UnifiedEntity<RectGeometry> {
   return {
     id: generateEntityId(),
@@ -323,7 +339,7 @@ export function createRectEntity(
 export function createCircleEntity(
   center: Point2D,
   radius: number,
-  options?: Partial<EntityStyle & { layerId: string; name: string }>
+  options?: Partial<EntityStyle & { layerId: string; name: string }>,
 ): UnifiedEntity<CircleGeometry> {
   return {
     id: generateEntityId(),
@@ -348,7 +364,7 @@ export function createArcEntity(
   radius: number,
   startAngle: number,
   endAngle: number,
-  options?: Partial<EntityStyle & { layerId: string; name: string }>
+  options?: Partial<EntityStyle & { layerId: string; name: string }>,
 ): UnifiedEntity<ArcGeometry> {
   return {
     id: generateEntityId(),
@@ -359,6 +375,47 @@ export function createArcEntity(
       radius,
       startAngle,
       endAngle,
+    },
+    style: { ...DEFAULT_STYLE, ...options },
+    state: { ...DEFAULT_STATE },
+    layerId: options?.layerId ?? "default",
+    name: options?.name,
+  };
+}
+
+/**
+ * Create a new DIMENSION entity
+ */
+export function createDimensionEntity(
+  startPoint: Point2D,
+  endPoint: Point2D,
+  offset: number = 30,
+  options?: Partial<EntityStyle & { layerId: string; name: string }>,
+): UnifiedEntity<DimensionGeometry> {
+  // Calculate default text position
+  const mid = {
+    x: (startPoint.x + endPoint.x) / 2,
+    y: (startPoint.y + endPoint.y) / 2,
+  };
+  const dx = endPoint.x - startPoint.x;
+  const dy = endPoint.y - startPoint.y;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  const nx = len > 0 ? -dy / len : 0;
+  const ny = len > 0 ? dx / len : 1;
+  const textPosition = {
+    x: mid.x + nx * offset,
+    y: mid.y + ny * offset,
+  };
+
+  return {
+    id: generateEntityId(),
+    entityType: UnifiedEntityType.DIMENSION,
+    geometry: {
+      type: "DIMENSION",
+      startPoint: { ...startPoint },
+      endPoint: { ...endPoint },
+      textPosition,
+      offset,
     },
     style: { ...DEFAULT_STYLE, ...options },
     state: { ...DEFAULT_STATE },

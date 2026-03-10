@@ -30,8 +30,34 @@ export interface DimensionStyle {
 }
 
 /**
+ * Dimension attachment - reference to entity point
+ * For Associative Dimensions (AutoCAD-style)
+ */
+export interface DimensionAttachment {
+  /** Entity ID that this dimension point is attached to */
+  entityId: string;
+  /** Which point on the entity (0 = first point, 1 = second point, etc.) */
+  pointIndex: number;
+  /** OSNAP type used when attaching (endpoint, midpoint, center, etc.) */
+  snapType?:
+    | "endpoint"
+    | "midpoint"
+    | "center"
+    | "quadrant"
+    | "intersection"
+    | "perpendicular"
+    | "tangent"
+    | "nearest";
+}
+
+/**
  * Dimension entity interface
  * Note: dimensionType uses DimensionType from DimensionManager for full compatibility
+ *
+ * ASSOCIATIVE DIMENSIONS:
+ * - attachment1/attachment2 reference entities by ID
+ * - When entity moves, dimension auto-updates
+ * - point1/point2 are computed from attachments if present
  */
 export interface DimensionEntity {
   id: string;
@@ -51,122 +77,32 @@ export interface DimensionEntity {
     | "qdim";
   point1: Point;
   point2: Point;
+  point3?: Point; // For angular dimension (third point)
   offset: number;
   value?: number;
   direction?: "horizontal" | "vertical" | "aligned" | "auto";
   style: DimensionStyle;
+
+  // ==================== ASSOCIATIVE DIMENSION ====================
+  /** Attachment for point1 - if set, dimension follows this entity */
+  attachment1?: DimensionAttachment;
+  /** Attachment for point2 - if set, dimension follows this entity */
+  attachment2?: DimensionAttachment;
+  /** Attachment for point3 (angular dimensions) */
+  attachment3?: DimensionAttachment;
+  /** Whether dimension is associative (auto-computed from attachments) */
+  isAssociative?: boolean;
 }
 
-/**
- * Dimension grip type
- */
-export type DimensionGripType =
-  | "point1"
-  | "point2"
-  | "dimP1"
-  | "dimP2"
-  | "text";
-
-/**
- * Dimension grip interface
- */
-export interface DimensionGrip {
-  dimensionId: string;
-  type: DimensionGripType;
-  position: Point;
-}
+// ==================== STEP-4.1: Re-export from canonical canvas.types.ts ====================
+export type {
+  DrawingState,
+  DimensionGripType,
+  DimensionGrip,
+  LayerInfo,
+} from "../canvas.types";
 
 // CadEntity is now imported from unified source above
-
-/**
- * DrawingState union type - represents all possible drawing states
- */
-export type DrawingState =
-  | { mode: "idle" }
-  | { mode: "line"; points: Point[] }
-  | { mode: "rect"; corner1: Point | null }
-  | { mode: "circle"; center: Point | null }
-  | {
-      mode: "arc";
-      points: Point[];
-    }
-  | {
-      mode: "ellipse";
-      center: Point | null;
-      axisEnd?: Point;
-      radiusX?: number;
-    }
-  | {
-      mode: "text";
-      position: Point;
-      inputActive: boolean;
-    }
-  | {
-      mode: "selecting";
-      start: Point;
-      currentPos: Point;
-    }
-  | {
-      mode: "moving";
-      startPos: Point;
-      entities: CadEntity[];
-      originalPositions: Point[][];
-    }
-  | {
-      mode: "movingDimension";
-      startPos: Point;
-      dimensionId: string;
-      originalOffset: number;
-    }
-  | {
-      mode: "editingDimensionGrip";
-      dimensionId: string;
-      gripType: string;
-      startPos: Point;
-      originalDimension: DimensionEntity;
-    }
-  | {
-      mode: "modifyMove";
-      step: "selectBase" | "selectDestination";
-      entityIds: string[];
-      dimensionIds: string[];
-      basePoint?: Point;
-    }
-  | {
-      mode: "modifyCopy";
-      step: "selectBase" | "selectDestination";
-      entityIds: string[];
-      dimensionIds: string[];
-      basePoint?: Point;
-    }
-  | {
-      mode: "modifyRotate";
-      step: "selectBase" | "selectAngle";
-      entityIds: string[];
-      dimensionIds: string[];
-      basePoint?: Point;
-      startAngle?: number;
-    }
-  | {
-      mode: "modifyMirror";
-      step: "selectFirst" | "selectSecond";
-      entityIds: string[];
-      dimensionIds: string[];
-      firstPoint?: Point;
-    }
-  | {
-      mode: "modifyScale";
-      step: "selectBase" | "selectScale";
-      entityIds: string[];
-      dimensionIds: string[];
-      basePoint?: Point;
-    }
-  | {
-      mode: "modifyOffset";
-      step: "enterDistance" | "selectEntity" | "selectSide";
-      distance?: number;
-      entityId?: string;
-    };
 
 /**
  * Dynamic input state for dimension entry

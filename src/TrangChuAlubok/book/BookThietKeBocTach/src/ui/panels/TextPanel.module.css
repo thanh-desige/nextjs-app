@@ -1,0 +1,364 @@
+/**
+ * TextPanel.module.css
+ * 
+ * Styles cho Text Panel - đầy đủ settings cho TEXT
+ */
+
+.panel {
+  background: #1e1e1e;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 8px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #333;
+  margin-bottom: 8px;
+}
+
+.title {
+  font-weight: 600;
+  color: #00bfff;
+  font-size: 12px;
+}
+
+/* Section */
+.section {
+  background: #2d2d2d;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.sectionHeader {
+  font-size: 11px;
+  color: #00bfff;
+  margin-bottom: 8px;
+  font-weight: 600;
+  border-bottom: 1px solid #444;
+  padding-bottom: 4px;
+}
+
+/* Sub Section (nested within section) */
+.subSection {
+  background: #252525;
+  border-radius: 3px;
+  padding: 6px;
+  margin-top: 8px;
+}
+
+.subSectionHeader {
+  font-size: 10px;
+  color: #888;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+/* Row layout for label + control */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.rowLabel {
+  font-size: 10px;
+  color: #aaa;
+  min-width: 70px;
+}
+
+/* Toggle Group */
+.toggleGroup {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.toggleButton {
+  flex: 1;
+  padding: 8px 12px;
+  background: #3d3d3d;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #ccc;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toggleButton:hover {
+  background: #4d4d4d;
+  border-color: #666;
+}
+
+.toggleButton.active {
+  background: #00bfff;
+  border-color: #00bfff;
+  color: #000;
+}
+
+/* Small toggle group for inline controls */
+.toggleGroupSmall {
+  display: flex;
+  gap: 2px;
+}
+
+.toggleSmall {
+  padding: 4px 8px;
+  background: #3d3d3d;
+  border: 1px solid #555;
+  border-radius: 3px;
+  color: #ccc;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toggleSmall:hover {
+  background: #4d4d4d;
+}
+
+.toggleSmall.active {
+  background: #00bfff;
+  border-color: #00bfff;
+  color: #000;
+}
+
+.modeDescription {
+  font-size: 10px;
+  color: #888;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Preset Grid */
+.presetGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.presetButton {
+  padding: 6px 8px;
+  background: #3d3d3d;
+  border: 1px solid #555;
+  border-radius: 3px;
+  color: #ccc;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.presetButton:hover {
+  background: #4d4d4d;
+  border-color: #666;
+}
+
+.presetButton.active {
+  background: #00bfff;
+  border-color: #00bfff;
+  color: #000;
+}
+
+/* Custom Input */
+.customInput {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.numberInput {
+  flex: 1;
+  padding: 6px 8px;
+  background: #3d3d3d;
+  border: 1px solid #555;
+  border-radius: 3px;
+  color: #fff;
+  font-size: 11px;
+  width: 60px;
+}
+
+.numberInput:focus {
+  outline: none;
+  border-color: #00bfff;
+}
+
+.unit {
+  font-size: 10px;
+  color: #888;
+}
+
+.addButton {
+  padding: 6px 10px;
+  background: #00bfff;
+  border: none;
+  border-radius: 3px;
+  color: #000;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.addButton:hover {
+  background: #33ccff;
+}
+
+.currentValue {
+  font-size: 10px;
+  color: #888;
+  margin: 6px 0 0 0;
+}
+
+.currentValue strong {
+  color: #00bfff;
+}
+
+/* Hint text */
+.hint {
+  font-size: 9px;
+  color: #666;
+  margin: 4px 0 0 0;
+  font-style: italic;
+}
+
+/* Color picker and presets */
+.colorRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.colorPicker {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+}
+
+.colorPicker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.colorPicker::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+.colorPresets {
+  display: flex;
+  gap: 2px;
+}
+
+.colorPreset {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #555;
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.colorPreset:hover {
+  border-color: #888;
+  transform: scale(1.1);
+}
+
+.colorPreset.active {
+  border-color: #fff;
+  box-shadow: 0 0 4px rgba(0, 191, 255, 0.5);
+}
+
+/* Slider */
+.slider {
+  flex: 1;
+  height: 4px;
+  appearance: none;
+  background: #444;
+  border-radius: 2px;
+  outline: none;
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #00bfff;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: #00bfff;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.sliderValue {
+  font-size: 10px;
+  color: #00bfff;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* Select dropdown */
+.select {
+  flex: 1;
+  padding: 4px 8px;
+  background: #3d3d3d;
+  border: 1px solid #555;
+  border-radius: 3px;
+  color: #fff;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #00bfff;
+}
+
+.select option {
+  background: #2d2d2d;
+  color: #fff;
+}
+
+/* Info Box */
+.infoBox {
+  background: #1a2a1a;
+  border: 1px solid #2a4a2a;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 10px;
+  color: #8a8;
+}
+
+.infoBox strong {
+  color: #afa;
+}
+
+.infoBox ul {
+  margin: 4px 0 0 0;
+  padding-left: 16px;
+}
+
+.infoBox li {
+  margin: 2px 0;
+}

@@ -174,3 +174,43 @@ export const applyOrtho = (start: Point, end: Point): Point => {
   const dy = Math.abs(end.y - start.y);
   return dx > dy ? { x: end.x, y: start.y } : { x: start.x, y: end.y };
 };
+
+/**
+ * Apply orthogonal constraint for angles (snap to 0°, 90°, 180°, 270°)
+ * Used for ROTATE command to constrain angle direction from center
+ * Returns a point on the ortho-constrained ray from center
+ */
+export const applyOrthoAngle = (center: Point, point: Point): Point => {
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist === 0) return point;
+
+  // Calculate current angle (in radians)
+  const angle = Math.atan2(dy, dx);
+
+  // Snap to nearest 90° (0, π/2, π, -π/2)
+  // 0° = right, 90° = up, 180° = left, 270° = down
+  const snapAngles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+
+  let nearestAngle = 0;
+  let minDiff = Math.PI;
+
+  for (const snapAngle of snapAngles) {
+    // Calculate angular difference (handle wrap-around)
+    let diff = Math.abs(angle - snapAngle);
+    if (diff > Math.PI) diff = 2 * Math.PI - diff;
+
+    if (diff < minDiff) {
+      minDiff = diff;
+      nearestAngle = snapAngle;
+    }
+  }
+
+  // Return point at same distance but at snapped angle
+  return {
+    x: center.x + dist * Math.cos(nearestAngle),
+    y: center.y + dist * Math.sin(nearestAngle),
+  };
+};

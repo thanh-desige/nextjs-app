@@ -6,6 +6,7 @@ import { IVec2 } from "../geometry/Vec2";
 import { IEntity, EntityStyle } from "../entities/Entity.types";
 import { CadEngine } from "../engine/CadEngine";
 import { ToolMode } from "../engine/EngineState";
+import { OsnapResult } from "../osnap/Osnap.types";
 
 // ==================== Command Interface ====================
 
@@ -48,6 +49,8 @@ export interface CommandContext {
   style: EntityStyle;
   /** Active layer ID - undefined when layers are disabled */
   layerId?: string;
+  /** OSNAP results for each point (for associative dimensions) */
+  snapResults?: (OsnapResult | null)[];
 }
 
 // ==================== Interactive Command ====================

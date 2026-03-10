@@ -1,5 +1,7 @@
 /**
  * SCALE Command - Scale entities từ điểm tâm
+ *
+ * STEP-3.9: Uses EntityBridge for immutable transforms.
  */
 
 import {
@@ -10,7 +12,7 @@ import {
 } from "../Command.types";
 import { IVec2 } from "../../geometry/Vec2";
 import { IEntity } from "../../entities/Entity.types";
-import { BaseEntity } from "../../entities/BaseEntity";
+import { scaleIEntity } from "../../entities/EntityBridge";
 
 export class ScaleCommand implements ICommand {
   readonly name = "SCALE";
@@ -29,7 +31,7 @@ export class ScaleCommand implements ICommand {
     private center: IVec2,
     private scaleX: number,
     private scaleY?: number,
-    private entityIds?: string[]
+    private entityIds?: string[],
   ) {
     if (this.scaleY === undefined) {
       this.scaleY = this.scaleX;
@@ -65,10 +67,10 @@ export class ScaleCommand implements ICommand {
       scaleY: sy,
     };
 
-    // Thực hiện scale
+    // Thực hiện scale qua EntityRegistry (immutable)
     for (const entity of entities) {
-      const baseEntity = entity as BaseEntity;
-      baseEntity.scale(this.scaleX, sy, this.center);
+      const scaled = scaleIEntity(entity, this.scaleX, sy, this.center);
+      context.engine.updateEntity(entity.id, scaled);
     }
 
     context.engine.requestRender();
@@ -76,7 +78,7 @@ export class ScaleCommand implements ICommand {
     return {
       success: true,
       message: `Scaled ${entities.length} object(s) by ${this.scaleX.toFixed(
-        2
+        2,
       )}`,
       entities,
     };
@@ -85,14 +87,20 @@ export class ScaleCommand implements ICommand {
   undo(context: CommandContext): void {
     if (!this.data) return;
 
-    // Scale ngược lại
+    // Scale ngược lại (immutable)
     const invScaleX = 1 / this.data.scaleX;
     const invScaleY = 1 / this.data.scaleY;
 
     for (const entityId of this.data.entityIds) {
-      const entity = context.engine.getEntity(entityId) as BaseEntity;
+      const entity = context.engine.getEntity(entityId);
       if (entity) {
-        entity.scale(invScaleX, invScaleY, this.data.center);
+        const scaled = scaleIEntity(
+          entity,
+          invScaleX,
+          invScaleY,
+          this.data.center,
+        );
+        context.engine.updateEntity(entityId, scaled);
       }
     }
 
@@ -105,9 +113,15 @@ export class ScaleCommand implements ICommand {
     }
 
     for (const entityId of this.data.entityIds) {
-      const entity = context.engine.getEntity(entityId) as BaseEntity;
+      const entity = context.engine.getEntity(entityId);
       if (entity) {
-        entity.scale(this.data.scaleX, this.data.scaleY, this.data.center);
+        const scaled = scaleIEntity(
+          entity,
+          this.data.scaleX,
+          this.data.scaleY,
+          this.data.center,
+        );
+        context.engine.updateEntity(entityId, scaled);
       }
     }
 

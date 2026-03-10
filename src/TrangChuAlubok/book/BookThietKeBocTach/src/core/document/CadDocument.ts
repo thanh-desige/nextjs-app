@@ -1,5 +1,7 @@
 /**
  * CadDocument - Document chính chứa toàn bộ dữ liệu CAD
+ * STEP-5.8: Refactored — types extracted to CadDocument.types.ts,
+ * dimension subsystem extracted to DimensionDocumentService.ts
  *
  * ĐIỀU KIỆN 1: Mọi thay đổi phải đi qua Document
  * UI → CadEngine → CadDocument → History
@@ -8,97 +10,32 @@
 
 import { IVec2 } from "../geometry/Vec2";
 import { IEntity, EntityJSON } from "../entities/Entity.types";
-import { LayerManager, LayerData } from "./Layer";
-import { BlockManager, BlockJSON } from "./Block";
+import { serializeIEntity, deserializeIEntity } from "../entities/EntityBridge";
+import { LayerManager } from "./Layer";
+import { BlockManager } from "./Block";
 import { History } from "./History";
 import { DimensionEntity } from "../dimensions/DimensionManager";
+import { DoorEntity } from "../entities/DoorEntity";
 
-// ==================== Canvas Entity Type ====================
-// Canvas entities (line, rect, circle, polyline) - UI drawing entities
+// Types (re-exported for backward compatibility)
+export type {
+  CanvasPoint,
+  CanvasEntity,
+  DocumentMetadata,
+  DocumentUnits,
+  DocumentViewport,
+  DocumentData,
+} from "./CadDocument.types";
+import type {
+  CanvasEntity,
+  DocumentMetadata,
+  DocumentViewport,
+  DocumentData,
+} from "./CadDocument.types";
 
-export interface CanvasPoint {
-  x: number;
-  y: number;
-}
-
-export interface CanvasEntity {
-  id: string;
-  type: "line" | "polyline" | "rect" | "circle" | "arc" | "ellipse" | "text";
-  points: CanvasPoint[];
-  color: string;
-  lineWidth: number;
-  selected?: boolean;
-  locked?: boolean;
-  visible?: boolean;
-  layer?: string;
-  /**
-   * Use layer style (ByLayer) or entity's own style (ByObject/Custom)
-   * - true/undefined: Entity inherits style from layer (default)
-   * - false: Entity uses its own color/lineWidth/etc (Custom mode)
-   */
-  useLayerStyle?: boolean;
-  // Stroke style (solid, dashed, dotted, dashdot)
-  strokeStyle?: "solid" | "dashed" | "dotted" | "dashdot";
-  // Fill properties
-  fillColor?: string | null;
-  fillOpacity?: number;
-  // Entity opacity (0-1)
-  opacity?: number;
-  // Polyline properties
-  closed?: boolean;
-  // Arc properties
-  startAngle?: number;
-  endAngle?: number;
-  // Ellipse properties
-  radiusX?: number;
-  radiusY?: number;
-  rotation?: number;
-  // Text properties
-  text?: string;
-  fontSize?: number;
-  fontFamily?: string;
-}
-
-// ==================== Document Metadata ====================
-
-export interface DocumentMetadata {
-  title: string;
-  author?: string;
-  created: Date;
-  modified: Date;
-  version: string;
-  description?: string;
-  units: DocumentUnits;
-  customProperties?: Record<string, unknown>;
-}
-
-export interface DocumentUnits {
-  /** Đơn vị chính: mm, cm, m, inch, ft */
-  primary: "mm" | "cm" | "m" | "inch" | "ft";
-  /** Precision - số chữ số thập phân */
-  precision: number;
-  /** Scale factor */
-  scale: number;
-}
-
-export interface DocumentViewport {
-  center: IVec2;
-  zoom: number;
-  rotation: number;
-}
-
-// ==================== Document Data (for serialization) ====================
-
-export interface DocumentData {
-  metadata: DocumentMetadata;
-  layers: LayerData[];
-  activeLayerId: string;
-  blocks: BlockJSON[];
-  entities: EntityJSON[];
-  dimensions: DimensionEntity[]; // Dimensions storage
-  canvasEntities: CanvasEntity[]; // Canvas entities storage
-  viewport: DocumentViewport;
-}
+// Dimension subsystem
+import { DimensionDocumentService } from "./DimensionDocumentService";
+export { DimensionDocumentService } from "./DimensionDocumentService";
 
 // ==================== CAD Document Class ====================
 
@@ -111,17 +48,21 @@ export class CadDocument {
   public blocks: BlockManager;
   public history: History;
 
+  // Dimension subsystem (STEP-5.8: delegated)
+  public dimensionService: DimensionDocumentService;
+
   // Entities storage
   private entities: Map<string, IEntity> = new Map();
-
-  // Dimensions storage (ĐIỀU KIỆN 1: Dimensions phải đi qua Document)
-  private dimensions: Map<string, DimensionEntity> = new Map();
 
   // Canvas entities storage (ĐIỀU KIỆN 1: Canvas entities phải đi qua Document)
   private canvasEntities: Map<string, CanvasEntity> = new Map();
 
   // Canvas selection state
   private canvasSelectedIds: Set<string> = new Set();
+
+  // Doors storage (ĐIỀU KIỆN 1: Doors phải đi qua Document)
+  // RULE 7: Mọi thay đổi doors phải đi qua Command + History
+  private doors: Map<string, DoorEntity> = new Map();
 
   // Viewport state
   public viewport: DocumentViewport;
@@ -148,6 +89,12 @@ export class CadDocument {
     this.layers = new LayerManager();
     this.blocks = new BlockManager();
     this.history = new History(100);
+
+    // Dimension subsystem with injected dependencies (avoids circular ref)
+    this.dimensionService = new DimensionDocumentService({
+      getCanvasEntity: (id: string) => this.canvasEntities.get(id),
+      markModified: () => this.markModified(),
+    });
 
     this.viewport = {
       center: { x: 0, y: 0 },
@@ -223,69 +170,81 @@ export class CadDocument {
     this.markModified();
   }
 
-  // ==================== Dimension CRUD ====================
+  // ==================== Dimension CRUD (delegates to DimensionDocumentService) ====================
   // ĐIỀU KIỆN 1: Mọi thay đổi dimension PHẢI đi qua đây
 
+  addLegacyRadialDimension(dimension: DimensionEntity): void {
+    this.dimensionService.addLegacyRadialDimension(dimension);
+  }
+
   addDimension(dimension: DimensionEntity): void {
-    this.dimensions.set(dimension.id, dimension);
-    this.markModified();
+    this.dimensionService.addDimension(dimension);
   }
 
   addDimensions(dimensions: DimensionEntity[]): void {
-    for (const dim of dimensions) {
-      this.dimensions.set(dim.id, dim);
-    }
-    this.markModified();
+    this.dimensionService.addDimensions(dimensions);
   }
 
   getDimension(id: string): DimensionEntity | undefined {
-    return this.dimensions.get(id);
+    return this.dimensionService.getDimension(id);
+  }
+
+  restoreDimension(dimension: DimensionEntity): void {
+    this.dimensionService.restoreDimension(dimension);
+  }
+
+  restoreDimensions(dimensions: DimensionEntity[]): void {
+    this.dimensionService.restoreDimensions(dimensions);
   }
 
   updateDimension(id: string, updates: Partial<DimensionEntity>): boolean {
-    const dim = this.dimensions.get(id);
-    if (!dim) return false;
-
-    // Apply updates immutably
-    const updated = { ...dim, ...updates };
-    this.dimensions.set(id, updated);
-    this.markModified();
-    return true;
+    return this.dimensionService.updateDimension(id, updates);
   }
 
   removeDimension(id: string): DimensionEntity | undefined {
-    const dim = this.dimensions.get(id);
-    if (dim) {
-      this.dimensions.delete(id);
-      this.markModified();
-    }
-    return dim;
+    return this.dimensionService.removeDimension(id);
   }
 
   removeDimensions(ids: string[]): number {
-    let count = 0;
-    for (const id of ids) {
-      if (this.dimensions.delete(id)) count++;
-    }
-    if (count > 0) this.markModified();
-    return count;
+    return this.dimensionService.removeDimensions(ids);
   }
 
   getAllDimensions(): DimensionEntity[] {
-    return Array.from(this.dimensions.values());
+    return this.dimensionService.getAllDimensions();
   }
 
   getDimensionCount(): number {
-    return this.dimensions.size;
+    return this.dimensionService.getDimensionCount();
   }
 
   hasDimension(id: string): boolean {
-    return this.dimensions.has(id);
+    return this.dimensionService.hasDimension(id);
   }
 
   clearDimensions(): void {
-    this.dimensions.clear();
-    this.markModified();
+    this.dimensionService.clearDimensions();
+  }
+
+  // ==================== Dimension Index + Lifecycle (delegates) ====================
+
+  rebuildDimensionIndex(): void {
+    this.dimensionService.rebuildDimensionIndex();
+  }
+
+  getDimensionsForEntity(entityId: string): DimensionEntity[] {
+    return this.dimensionService.getDimensionsForEntity(entityId);
+  }
+
+  commitEntityGeometryChange(entityId: string): number {
+    return this.dimensionService.commitEntityGeometryChange(entityId);
+  }
+
+  commitEntitiesGeometryChange(entityIds: string[]): number {
+    return this.dimensionService.commitEntitiesGeometryChange(entityIds);
+  }
+
+  handleEntityDeleted(entityId: string): void {
+    this.dimensionService.handleEntityDeleted(entityId);
   }
 
   // ==================== Canvas Entity CRUD ====================
@@ -410,6 +369,73 @@ export class CadDocument {
     return this.canvasSelectedIds.has(id);
   }
 
+  // ==================== Door CRUD ====================
+  // ĐIỀU KIỆN 1: Mọi thay đổi doors phải đi qua Document
+  // RULE 7: Các methods này CHỈ được gọi từ DoorCommands
+
+  addDoor(door: DoorEntity): void {
+    this.doors.set(door.id, door);
+    this.markModified();
+  }
+
+  addDoors(doors: DoorEntity[]): void {
+    for (const door of doors) {
+      this.doors.set(door.id, door);
+    }
+    this.markModified();
+  }
+
+  getDoor(id: string): DoorEntity | undefined {
+    return this.doors.get(id);
+  }
+
+  updateDoor(id: string, updates: Partial<DoorEntity>): boolean {
+    const door = this.doors.get(id);
+    if (!door) return false;
+
+    // Apply updates immutably - preserve class prototype
+    const updated = Object.assign(
+      Object.create(Object.getPrototypeOf(door)),
+      door,
+      updates
+    );
+    this.doors.set(id, updated);
+    this.markModified();
+    return true;
+  }
+
+  removeDoor(id: string): boolean {
+    const result = this.doors.delete(id);
+    if (result) this.markModified();
+    return result;
+  }
+
+  removeDoors(ids: string[]): number {
+    let count = 0;
+    for (const id of ids) {
+      if (this.doors.delete(id)) count++;
+    }
+    if (count > 0) this.markModified();
+    return count;
+  }
+
+  getAllDoors(): DoorEntity[] {
+    return Array.from(this.doors.values());
+  }
+
+  getDoorCount(): number {
+    return this.doors.size;
+  }
+
+  hasDoor(id: string): boolean {
+    return this.doors.has(id);
+  }
+
+  clearDoors(): void {
+    this.doors.clear();
+    this.markModified();
+  }
+
   // ==================== Selection Helpers ====================
 
   getEntitiesInBounds(
@@ -457,17 +483,33 @@ export class CadDocument {
       layers: this.layers.toJSON().layers,
       activeLayerId: this.layers.getActiveLayerId(),
       blocks: this.blocks.toJSON(),
-      entities: this.getAllEntities().map((e) => e.toJSON()),
+      entities: this.getAllEntities().map((e) => {
+        // Use EntityBridge serialization (EntityRegistry configs)
+        // Falls back to e.toJSON() for legacy BaseEntity instances
+        try {
+          return serializeIEntity(e) as unknown as EntityJSON;
+        } catch {
+          // Legacy fallback: BaseEntity instances still have toJSON()
+          return (e as unknown as { toJSON(): EntityJSON }).toJSON();
+        }
+      }),
       dimensions: this.getAllDimensions(), // Include dimensions in serialization
       canvasEntities: this.getAllCanvasEntities(), // Include canvas entities
+      doors: this.getAllDoors(), // Include doors (RULE 7)
       viewport: { ...this.viewport },
     };
   }
 
   static fromJSON(
     data: DocumentData,
-    entityFactory: (json: EntityJSON) => IEntity
+    entityFactory?: (json: EntityJSON) => IEntity
   ): CadDocument {
+    // Default factory: use EntityRegistry-based deserialization
+    const factory = entityFactory ?? ((json: EntityJSON) => {
+      const type = (json as Record<string, unknown>).entityType as string
+        ?? json.type;
+      return deserializeIEntity(type, json as Record<string, unknown>);
+    });
     const doc = new CadDocument({
       title: data.metadata.title,
       author: data.metadata.author,
@@ -487,19 +529,17 @@ export class CadDocument {
     });
 
     // Restore blocks
-    doc.blocks = BlockManager.fromJSON(data.blocks, entityFactory);
+    doc.blocks = BlockManager.fromJSON(data.blocks, factory);
 
     // Restore entities
     for (const entityJson of data.entities) {
-      const entity = entityFactory(entityJson);
+      const entity = factory(entityJson);
       doc.entities.set(entity.id, entity);
     }
 
-    // Restore dimensions
+    // Restore dimensions (via DimensionDocumentService)
     if (data.dimensions) {
-      for (const dim of data.dimensions) {
-        doc.dimensions.set(dim.id, dim);
-      }
+      doc.dimensionService.loadFromData(data.dimensions);
     }
 
     // Restore canvas entities
@@ -509,10 +549,17 @@ export class CadDocument {
       }
     }
 
+    // Restore doors (RULE 7: loaded via Document)
+    if (data.doors) {
+      for (const door of data.doors) {
+        doc.doors.set(door.id, door);
+      }
+    }
+
     // Restore viewport
     doc.viewport = { ...data.viewport };
 
-    doc.setEntityFactory(entityFactory);
+    doc.setEntityFactory(factory);
 
     return doc;
   }
@@ -526,7 +573,7 @@ export class CadDocument {
 
   static fromJSONString(
     jsonString: string,
-    entityFactory: (json: EntityJSON) => IEntity
+    entityFactory?: (json: EntityJSON) => IEntity
   ): CadDocument {
     const data = JSON.parse(jsonString) as DocumentData;
     return CadDocument.fromJSON(data, entityFactory);
@@ -539,6 +586,7 @@ export class CadDocument {
     entityCount: number;
     dimensionCount: number;
     canvasEntityCount: number;
+    doorCount: number;
     layerCount: number;
     blockCount: number;
     created: Date;
@@ -547,8 +595,9 @@ export class CadDocument {
     return {
       title: this.metadata.title,
       entityCount: this.entities.size,
-      dimensionCount: this.dimensions.size,
+      dimensionCount: this.dimensionService.getDimensionCount(),
       canvasEntityCount: this.canvasEntities.size,
+      doorCount: this.doors.size,
       layerCount: this.layers.getAllLayers().length,
       blockCount: this.blocks.getAllBlocks().length,
       created: this.metadata.created,

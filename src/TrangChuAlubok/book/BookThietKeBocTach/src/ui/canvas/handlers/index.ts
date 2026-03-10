@@ -126,7 +126,40 @@ export type {
   CommandDrawingState,
   CommandDrawingActions,
   UseCommandDrawingReturn,
-} from "./useCommandDrawing";
+} from "./commandDrawing.types";
+
+// Modify Commands Hook - MOVE, COPY, ROTATE, MIRROR, SCALE, OFFSET
+export { useModifyCommands } from "./useModifyCommands";
+export type {
+  ModifyMode,
+  ModifyMoveState,
+  ModifyCopyState,
+  ModifyRotateState,
+  ModifyMirrorState,
+  ModifyScaleState,
+  ModifyOffsetState,
+  ModifyState,
+  ModifyCallbacks,
+  UseModifyCommandsConfig,
+  UseModifyCommandsReturn,
+} from "./useModifyCommands";
+
+// Wheel/Zoom Handler Hook
+export { useWheelHandler } from "./useWheelHandler";
+export type {
+  WheelHandlerConfig,
+  UseWheelHandlerReturn,
+} from "./useWheelHandler";
+
+// Dynamic Input Handler Hook
+export { useDynamicInputHandler } from "./useDynamicInputHandler";
+export type {
+  DynamicInputState,
+  DrawStateForDynamicInput,
+  DynamicInputCallbacks,
+  DynamicInputConfig,
+  UseDynamicInputHandlerReturn,
+} from "./useDynamicInputHandler";
 
 // Types
 export type { PointerBindingsProps } from "./PointerBindings";

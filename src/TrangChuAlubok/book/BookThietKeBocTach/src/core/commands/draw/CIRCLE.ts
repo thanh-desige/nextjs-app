@@ -212,7 +212,7 @@ export class CircleCommand implements IInteractiveCommand {
       return { success: false, message: "Không thể tạo đường tròn" };
     }
 
-    circle.layerId = context.layerId;
+    circle.layerId = context.layerId || "default";
     // NOTE: Không gọi context.engine.addEntity() - executeInteractiveCommand() sẽ xử lý
     this.createdEntity = circle;
 
@@ -226,7 +226,18 @@ export class CircleCommand implements IInteractiveCommand {
   undo(context: CommandContext): void {
     if (this.createdEntity) {
       context.engine.removeEntity(this.createdEntity.id);
-      this.createdEntity = null;
     }
+  }
+
+  redo(context: CommandContext): CommandResult {
+    if (this.createdEntity) {
+      context.engine.addEntity(this.createdEntity);
+      return {
+        success: true,
+        message: `Redo: Đã tạo lại đường tròn`,
+        entities: [this.createdEntity],
+      };
+    }
+    return { success: false, message: "Không có entity để redo" };
   }
 }

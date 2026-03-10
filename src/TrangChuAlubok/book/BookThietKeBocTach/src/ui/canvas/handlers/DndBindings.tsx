@@ -202,6 +202,7 @@ export const DndBindings: React.FC<DndBindingsProps> = ({
         width: "100%",
         height: "100%",
         position: "relative",
+        // NOTE: touchAction handled by parent canvas container
       }}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}

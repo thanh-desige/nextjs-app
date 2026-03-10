@@ -1,5 +1,7 @@
 /**
  * useKeyboard - Hook for keyboard shortcuts and input handling
+ *
+ * STEP-1.3: Selection actions via useCanvasEntities (Commands)
  */
 
 "use client";
@@ -7,6 +9,7 @@
 import { useEffect, useCallback, useRef, useState } from "react";
 import { useEngineStore } from "../store/engineStore";
 import { useUIStore } from "../store/uiStore";
+import { useCanvasEntities } from "./useCanvasEntities";
 import { ToolMode } from "../core/engine/EngineState";
 
 // ==================== Types ====================
@@ -36,7 +39,7 @@ export interface UseKeyboardReturn {
   registerShortcut: (shortcut: KeyboardShortcut) => () => void;
   unregisterShortcut: (
     key: string,
-    modifiers?: { ctrl?: boolean; shift?: boolean; alt?: boolean }
+    modifiers?: { ctrl?: boolean; shift?: boolean; alt?: boolean },
   ) => void;
 
   // Queries
@@ -57,7 +60,7 @@ function createDefaultShortcuts(
   toggleGrid: () => void,
   toggleOsnap: () => void,
   toggleOrtho: () => void,
-  zoomFit: () => void
+  zoomFit: () => void,
 ): KeyboardShortcut[] {
   return [
     // Draw tools
@@ -225,7 +228,7 @@ function createDefaultShortcuts(
 // ==================== Hook Implementation ====================
 
 export function useKeyboard(
-  options: UseKeyboardOptions = {}
+  options: UseKeyboardOptions = {},
 ): UseKeyboardReturn {
   const { enabled = true, customShortcuts = [] } = options;
 
@@ -242,14 +245,22 @@ export function useKeyboard(
   const executeCommand = useEngineStore((state) => state.executeCommand);
   const undo = useEngineStore((state) => state.undo);
   const redo = useEngineStore((state) => state.redo);
-  const clearSelection = useEngineStore((state) => state.clearSelection);
-  const selectAll = useEngineStore((state) => state.selectAll);
+  // STEP-1.3: Selection via useCanvasEntities (Commands)
+  const {
+    clearSelection,
+    selectEntities: canvasSelectEntities,
+    entities: allCanvasEntities,
+  } = useCanvasEntities();
+  const selectAll = useCallback(() => {
+    const allIds = allCanvasEntities.map((e) => e.id);
+    canvasSelectEntities(allIds, false);
+  }, [allCanvasEntities, canvasSelectEntities]);
   const toggleGrid = useEngineStore((state) => state.toggleGrid);
   const toggleOsnap = useEngineStore((state) => state.toggleOsnap);
   const toggleOrtho = useEngineStore((state) => state.toggleOrtho);
   const zoomFit = useEngineStore((state) => state.zoomFit);
   const toggleCommandPalette = useUIStore(
-    (state) => state.toggleCommandPalette
+    (state) => state.toggleCommandPalette,
   );
 
   // Get all shortcuts
@@ -265,7 +276,7 @@ export function useKeyboard(
       toggleGrid,
       toggleOsnap,
       toggleOrtho,
-      zoomFit
+      zoomFit,
     );
     return [...defaults, ...customShortcutsRef.current];
   }, [
@@ -294,7 +305,7 @@ export function useKeyboard(
         return keyMatch && ctrlMatch && shiftMatch && altMatch;
       });
     },
-    [getShortcuts]
+    [getShortcuts],
   );
 
   // Key down handler
@@ -325,7 +336,7 @@ export function useKeyboard(
         shortcut.action();
       }
     },
-    [enabled, findShortcut]
+    [enabled, findShortcut],
   );
 
   // Key up handler
@@ -355,7 +366,7 @@ export function useKeyboard(
     // Return unregister function
     return () => {
       customShortcutsRef.current = customShortcutsRef.current.filter(
-        (s) => s !== shortcut
+        (s) => s !== shortcut,
       );
     };
   }, []);
@@ -364,7 +375,7 @@ export function useKeyboard(
   const unregisterShortcut = useCallback(
     (
       key: string,
-      modifiers?: { ctrl?: boolean; shift?: boolean; alt?: boolean }
+      modifiers?: { ctrl?: boolean; shift?: boolean; alt?: boolean },
     ) => {
       customShortcutsRef.current = customShortcutsRef.current.filter((s) => {
         const keyMatch = s.key.toLowerCase() === key.toLowerCase();
@@ -377,7 +388,7 @@ export function useKeyboard(
         return !(keyMatch && ctrlMatch && shiftMatch && altMatch);
       });
     },
-    []
+    [],
   );
 
   // Get shortcut description
@@ -387,7 +398,7 @@ export function useKeyboard(
       return shortcuts.find((s) => s.key.toLowerCase() === key.toLowerCase())
         ?.description;
     },
-    [getShortcuts]
+    [getShortcuts],
   );
 
   return {

@@ -31,7 +31,8 @@ export type CadEntityType =
   | "circle"
   | "arc"
   | "ellipse"
-  | "text";
+  | "text"
+  | "dimension";
 
 // ============================================
 // STROKE STYLE
@@ -136,6 +137,47 @@ export interface CadEntity {
 
   /** Text scale factor (1 = normal) */
   textScale?: number;
+
+  // ==================== Dimension (for SVG Export) ====================
+  // These fields are used when converting DimensionEntity to CadEntity for export
+
+  /** Dimension point1 (start point) */
+  point1?: Point;
+
+  /** Dimension point2 (end point) */
+  point2?: Point;
+
+  /** Dimension point3 (for angular dimensions) */
+  point3?: Point;
+
+  /** Dimension offset from points */
+  offset?: number;
+
+  /** Dimension value override */
+  value?: number;
+
+  /** Dimension direction */
+  direction?: "horizontal" | "vertical" | "aligned" | "auto";
+
+  /** Dimension type */
+  dimensionType?: string;
+
+  /** Dimension style object */
+  style?: {
+    textHeight: number;
+    arrowSize: number;
+    extensionOvershoot: number;
+    extensionOffset: number;
+    precision: number;
+    prefix: string;
+    suffix: string;
+    unit: string;
+    font: string;
+    color: string;
+    textColor?: string;
+    lineColor?: string;
+    showUnit?: boolean;
+  };
 }
 
 // ============================================

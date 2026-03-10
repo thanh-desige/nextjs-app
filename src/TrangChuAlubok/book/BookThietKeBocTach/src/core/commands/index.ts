@@ -18,3 +18,6 @@ export * from "./draw";
 
 // Modify Commands
 export * from "./modify";
+
+// Door Commands (RULE 7: Door changes via Commands)
+export * from "./door";

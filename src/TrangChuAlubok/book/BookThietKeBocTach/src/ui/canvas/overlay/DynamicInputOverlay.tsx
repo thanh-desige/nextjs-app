@@ -15,7 +15,13 @@ export type { Point, CadEntity };
 
 export interface DynamicInputState {
   active: boolean;
-  mode: "length" | "width-height" | "radius-diameter" | "sides-radius";
+  mode:
+    | "length"
+    | "width-height"
+    | "radius-diameter"
+    | "sides-radius"
+    | "move-copy"
+    | "offset-distance";
   value1: string;
   value2: string;
   focusField: 1 | 2;
@@ -57,6 +63,32 @@ export interface DynamicInputOverlayProps {
   pointsCount?: number;
   // Last point from command-based drawing (for calculating angle from mouse)
   lastPoint?: Point | null;
+  // Ortho mode - when enabled, angle is constrained to 0/90/180/270
+  orthoMode?: boolean;
+  // Ortho angle (in radians) - pre-calculated from lastPoint to ortho-constrained mouse position
+  orthoAngle?: number;
+  // Toggle Ortho mode (F8)
+  onToggleOrtho?: () => void;
+  // ==================== MOVE/COPY Props ====================
+  // Handler for MOVE/COPY input with distance/angle
+  onMoveCopyInput?: (distance: number, angle: number) => void;
+  // MOVE or COPY mode indicator
+  moveCopyMode?: "MOVE" | "COPY" | null;
+  // Base point for MOVE/COPY (to calculate angle from mouse)
+  moveCopyBasePoint?: Point | null;
+  // Cancel MOVE/COPY
+  onMoveCopyCancel?: () => void;
+  // Current angle from basePoint to mouse (ref for realtime access)
+  moveCopyAngleRef?: React.RefObject<number>;
+  // Ref to get real-time mouse position (for MOVE/COPY direction calculation)
+  mousePosRef?: React.RefObject<Point>;
+  // Canvas ref for accurate mouse position calculation
+  canvasRef?: React.RefObject<HTMLCanvasElement | null>;
+  // ==================== OFFSET Props ====================
+  // Handler for OFFSET distance input
+  onOffsetDistanceInput?: (distance: number) => void;
+  // Cancel OFFSET
+  onOffsetCancel?: () => void;
 }
 
 // ==================== Styles ====================
@@ -75,6 +107,13 @@ const labelStyle = (isFocused: boolean, activeColor: string = "#4a90d9") => ({
   color: isFocused ? activeColor : "#888",
   fontSize: 9,
 });
+
+// ==================== RULE 2: Numeric Input Filter ====================
+// Chỉ cho phép: số, dấu chấm, dấu trừ (cho số âm), @, <, dấu phẩy (coordinate separator)
+const filterNumericInput = (value: string): string => {
+  // Cho phép: 0-9, ., -, @, <, , (để nhập: 100, -50, 100<45, @50,50)
+  return value.replace(/[^0-9.,\-@<]/g, "");
+};
 
 // ==================== Component ====================
 
@@ -99,9 +138,66 @@ export const DynamicInputOverlay: React.FC<DynamicInputOverlayProps> = ({
   polygonSides = 6,
   pointsCount = 0,
   lastPoint = null,
+  orthoMode = false,
+  orthoAngle,
+  onToggleOrtho,
+  // MOVE/COPY props
+  onMoveCopyInput,
+  moveCopyMode = null,
+  moveCopyBasePoint = null,
+  onMoveCopyCancel,
+  mousePosRef,
+  canvasRef,
+  moveCopyAngleRef,
+  // OFFSET props
+  onOffsetDistanceInput,
+  onOffsetCancel,
 }) => {
   const inputRef1 = useRef<HTMLInputElement>(null);
   const inputRef2 = useRef<HTMLInputElement>(null);
+
+  // Track real-time mouse position via document listener (for MOVE/COPY direction)
+  const localMousePosRef = useRef<Point | null>(null);
+
+  useEffect(() => {
+    if (
+      dynamicInput.active &&
+      dynamicInput.mode === "move-copy" &&
+      moveCopyBasePoint
+    ) {
+      const handleDocumentMouseMove = (e: MouseEvent) => {
+        // Get canvas bounding rect for accurate position calculation
+        const canvas = canvasRef?.current;
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        // Calculate mouse position relative to canvas
+        const canvasX = e.clientX - rect.left;
+        const canvasY = e.clientY - rect.top;
+
+        // Convert to world coords (same logic as CadDrawingCanvas handleMouseMove)
+        const centerX = canvasDimensions.width / 2 + pan.x;
+        const centerY = canvasDimensions.height / 2 + pan.y;
+        const worldX = (canvasX - centerX) / zoom;
+        const worldY = -(canvasY - centerY) / zoom;
+        localMousePosRef.current = { x: worldX, y: worldY };
+      };
+
+      document.addEventListener("mousemove", handleDocumentMouseMove);
+      return () =>
+        document.removeEventListener("mousemove", handleDocumentMouseMove);
+    }
+  }, [
+    dynamicInput.active,
+    dynamicInput.mode,
+    moveCopyBasePoint,
+    canvasDimensions,
+    pan,
+    zoom,
+  ]);
+
+  // Note: F8 is handled globally by CadDrawingCanvas with capture phase
+  // No need to handle F8 here
 
   // Focus management - focus input when overlay becomes active or points change
   // Use setTimeout to ensure focus happens after canvas click event
@@ -144,6 +240,8 @@ export const DynamicInputOverlay: React.FC<DynamicInputOverlayProps> = ({
   const centerY = canvasDimensions.height / 2 + pan.y;
   const screenX = centerX + mousePos.x * zoom;
   const screenY = centerY - mousePos.y * zoom;
+
+  // Note: F8 is handled globally by CadDrawingCanvas, no need for handleF8 here
 
   // Helper to create entity
   const addEntity = (entity: CadEntity) => {
@@ -235,10 +333,16 @@ export const DynamicInputOverlay: React.FC<DynamicInputOverlayProps> = ({
   };
 
   // Calculate overlay position with smart edge detection
-  // Overlay width estimate: ~180px for line mode, ~150px for others
-  const overlayWidth = dynamicInput.mode === "length" ? 180 : 150;
+  // Overlay width estimate: ~180px for line mode and move-copy mode, ~150px for others
+  const overlayWidth =
+    dynamicInput.mode === "length" || dynamicInput.mode === "move-copy"
+      ? 180
+      : dynamicInput.mode === "offset-distance"
+      ? 140
+      : 150;
   const overlayHeight = 30;
-  const offset = 15;
+  // For move-copy mode, use larger offset to avoid overlapping with ΔX/ΔY display
+  const offset = dynamicInput.mode === "move-copy" ? 45 : 15;
 
   // Determine if overlay should appear on left or right of cursor
   const spaceOnRight = canvasDimensions.width - screenX;
@@ -292,7 +396,10 @@ export const DynamicInputOverlay: React.FC<DynamicInputOverlayProps> = ({
             type="text"
             value={dynamicInput.value1}
             onChange={(e) =>
-              setDynamicInput((prev) => ({ ...prev, value1: e.target.value }))
+              setDynamicInput((prev) => ({
+                ...prev,
+                value1: filterNumericInput(e.target.value),
+              }))
             }
             onFocus={() =>
               setDynamicInput((prev) => ({ ...prev, focusField: 1 }))
@@ -311,6 +418,9 @@ export const DynamicInputOverlay: React.FC<DynamicInputOverlayProps> = ({
                 if (dynamicInput.value2.trim()) {
                   // User entered angle explicitly
                   angle = (parseFloat(dynamicInput.value2) * Math.PI) / 180;
+                } else if (orthoMode && orthoAngle !== undefined) {
+                  // Ortho mode: use pre-calculated ortho angle (0, 90, 180, 270)
+                  angle = orthoAngle;
                 } else if (lastPoint) {
                   // Command-based drawing: use angle from lastPoint to mouse position
                   angle = Math.atan2(
@@ -353,7 +463,10 @@ export const DynamicInputOverlay: React.FC<DynamicInputOverlayProps> = ({
             type="text"
             value={dynamicInput.value2}
             onChange={(e) =>
-              setDynamicInput((prev) => ({ ...prev, value2: e.target.value }))
+              setDynamicInput((prev) => ({
+                ...prev,
+                value2: filterNumericInput(e.target.value),
+              }))
             }
             onFocus={() =>
               setDynamicInput((prev) => ({ ...prev, focusField: 2 }))
@@ -392,7 +505,10 @@ export const DynamicInputOverlay: React.FC<DynamicInputOverlayProps> = ({
             type="text"
             value={dynamicInput.value1}
             onChange={(e) =>
-              setDynamicInput((prev) => ({ ...prev, value1: e.target.value }))
+              setDynamicInput((prev) => ({
+                ...prev,
+                value1: filterNumericInput(e.target.value),
+              }))
             }
             onKeyDown={(e) => {
               if (e.key === "Tab") {
@@ -414,7 +530,10 @@ export const DynamicInputOverlay: React.FC<DynamicInputOverlayProps> = ({
             type="text"
             value={dynamicInput.value2}
             onChange={(e) =>
-              setDynamicInput((prev) => ({ ...prev, value2: e.target.value }))
+              setDynamicInput((prev) => ({
+                ...prev,
+                value2: filterNumericInput(e.target.value),
+              }))
             }
             onKeyDown={(e) => {
               if (e.key === "Tab") {
@@ -442,7 +561,10 @@ export const DynamicInputOverlay: React.FC<DynamicInputOverlayProps> = ({
             type="text"
             value={dynamicInput.value1}
             onChange={(e) =>
-              setDynamicInput((prev) => ({ ...prev, value1: e.target.value }))
+              setDynamicInput((prev) => ({
+                ...prev,
+                value1: filterNumericInput(e.target.value),
+              }))
             }
             onKeyDown={(e) => {
               if (e.key === "Tab") {
@@ -464,7 +586,10 @@ export const DynamicInputOverlay: React.FC<DynamicInputOverlayProps> = ({
             type="text"
             value={dynamicInput.value2}
             onChange={(e) =>
-              setDynamicInput((prev) => ({ ...prev, value2: e.target.value }))
+              setDynamicInput((prev) => ({
+                ...prev,
+                value2: filterNumericInput(e.target.value),
+              }))
             }
             onKeyDown={(e) => {
               if (e.key === "Tab") {
@@ -494,7 +619,10 @@ export const DynamicInputOverlay: React.FC<DynamicInputOverlayProps> = ({
             type="text"
             value={dynamicInput.value1}
             onChange={(e) =>
-              setDynamicInput((prev) => ({ ...prev, value1: e.target.value }))
+              setDynamicInput((prev) => ({
+                ...prev,
+                value1: filterNumericInput(e.target.value),
+              }))
             }
             onKeyDown={(e) => {
               if (e.key === "Tab") {
@@ -529,7 +657,10 @@ export const DynamicInputOverlay: React.FC<DynamicInputOverlayProps> = ({
             type="text"
             value={dynamicInput.value2}
             onChange={(e) =>
-              setDynamicInput((prev) => ({ ...prev, value2: e.target.value }))
+              setDynamicInput((prev) => ({
+                ...prev,
+                value2: filterNumericInput(e.target.value),
+              }))
             }
             onKeyDown={(e) => {
               if (e.key === "Tab") {
@@ -554,6 +685,248 @@ export const DynamicInputOverlay: React.FC<DynamicInputOverlayProps> = ({
             }}
             style={{ ...inputStyle(dynamicInput.focusField === 2), width: 45 }}
             placeholder="mm"
+          />
+        </div>
+      )}
+
+      {/* ==================== MOVE/COPY mode - same UI as LINE: L + A inputs ==================== */}
+      {dynamicInput.mode === "move-copy" && moveCopyMode && (
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <span
+            style={labelStyle(
+              dynamicInput.focusField === 1,
+              moveCopyMode === "MOVE" ? "#4a90d9" : "#00cc66"
+            )}
+          >
+            L:
+          </span>
+          <input
+            ref={inputRef1}
+            type="text"
+            value={dynamicInput.value1}
+            onChange={(e) =>
+              setDynamicInput((prev) => ({
+                ...prev,
+                value1: filterNumericInput(e.target.value),
+              }))
+            }
+            onFocus={() =>
+              setDynamicInput((prev) => ({ ...prev, focusField: 1 }))
+            }
+            onKeyDown={(e) => {
+              if (e.key === "Tab") {
+                e.preventDefault();
+                handleTab(2, inputRef2);
+              } else if (
+                e.key === "Enter" ||
+                (e.key === " " && dynamicInput.value1.trim())
+              ) {
+                e.preventDefault();
+                const input = dynamicInput.value1.trim();
+
+                // Empty input = use mouse position (handled by parent as fallback)
+                if (!input) {
+                  return;
+                }
+
+                let dx = 0,
+                  dy = 0;
+                let parsed = false;
+
+                // Check if input starts with @ (relative mode)
+                if (input.startsWith("@")) {
+                  const relInput = input.substring(1); // Remove @
+
+                  // Try @d<angle format (polar)
+                  const polarMatch = relInput.match(
+                    /^(-?\d+\.?\d*)\s*<\s*(-?\d+\.?\d*)$/
+                  );
+                  if (polarMatch) {
+                    const distance = parseFloat(polarMatch[1]);
+                    const angleDeg = parseFloat(polarMatch[2]);
+                    if (!isNaN(distance) && !isNaN(angleDeg)) {
+                      const angleRad = (angleDeg * Math.PI) / 180;
+                      dx = distance * Math.cos(angleRad);
+                      dy = distance * Math.sin(angleRad);
+                      parsed = true;
+                    }
+                  }
+
+                  // Try @dx,dy format (cartesian)
+                  if (!parsed) {
+                    const cartMatch = relInput.match(
+                      /^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/
+                    );
+                    if (cartMatch) {
+                      dx = parseFloat(cartMatch[1]);
+                      dy = parseFloat(cartMatch[2]);
+                      if (!isNaN(dx) && !isNaN(dy)) {
+                        parsed = true;
+                      }
+                    }
+                  }
+                } else {
+                  // Default: number = distance
+                  const distance = parseFloat(input);
+                  if (!isNaN(distance) && distance !== 0) {
+                    let angle: number;
+
+                    // Check if user entered angle in field 2
+                    if (dynamicInput.value2.trim()) {
+                      // User entered angle explicitly
+                      angle = (parseFloat(dynamicInput.value2) * Math.PI) / 180;
+                    } else if (moveCopyBasePoint) {
+                      // Calculate angle from basePoint to current mouse position (like LINE)
+                      // Apply ortho constraint if enabled - snap to 0°, 90°, 180°, 270°
+                      let effectiveX = mousePos.x;
+                      let effectiveY = mousePos.y;
+
+                      if (orthoMode) {
+                        // Apply ortho: snap to horizontal or vertical
+                        const dx = mousePos.x - moveCopyBasePoint.x;
+                        const dy = mousePos.y - moveCopyBasePoint.y;
+                        if (Math.abs(dx) > Math.abs(dy)) {
+                          // Horizontal (0° or 180°)
+                          effectiveY = moveCopyBasePoint.y;
+                        } else {
+                          // Vertical (90° or 270°)
+                          effectiveX = moveCopyBasePoint.x;
+                        }
+                      }
+
+                      angle = Math.atan2(
+                        effectiveY - moveCopyBasePoint.y,
+                        effectiveX - moveCopyBasePoint.x
+                      );
+                    } else {
+                      angle = 0;
+                    }
+
+                    dx = distance * Math.cos(angle);
+                    dy = distance * Math.sin(angle);
+                    parsed = true;
+                  }
+                }
+
+                if (parsed) {
+                  // Calculate angle from dx, dy for callback
+                  const angle = Math.atan2(dy, dx);
+                  const dist = Math.sqrt(dx * dx + dy * dy);
+                  onMoveCopyInput?.(dist, angle);
+                  // Reset input for next copy
+                  setDynamicInput((prev) => ({
+                    ...prev,
+                    value1: "",
+                    value2: "",
+                  }));
+                }
+              } else if (e.key === " " && !dynamicInput.value1.trim()) {
+                // Space with empty input - could finish multi-copy
+                e.preventDefault();
+              } else if (e.key === "Escape") {
+                onMoveCopyCancel?.();
+              }
+            }}
+            style={{
+              ...inputStyle(
+                dynamicInput.focusField === 1,
+                moveCopyMode === "MOVE" ? "#4a90d9" : "#00cc66"
+              ),
+              width: 50,
+            }}
+            placeholder="mm"
+          />
+          <span style={labelStyle(dynamicInput.focusField === 2, "#ffa500")}>
+            A:
+          </span>
+          <input
+            ref={inputRef2}
+            type="text"
+            value={dynamicInput.value2}
+            onChange={(e) =>
+              setDynamicInput((prev) => ({
+                ...prev,
+                value2: filterNumericInput(e.target.value),
+              }))
+            }
+            onFocus={() =>
+              setDynamicInput((prev) => ({ ...prev, focusField: 2 }))
+            }
+            onKeyDown={(e) => {
+              if (e.key === "Tab") {
+                e.preventDefault();
+                handleTab(1, inputRef1);
+              } else if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                const distance = parseFloat(dynamicInput.value1);
+                const angleDeg = parseFloat(dynamicInput.value2);
+                if (!isNaN(distance) && distance > 0 && !isNaN(angleDeg)) {
+                  const angle = (angleDeg * Math.PI) / 180;
+                  onMoveCopyInput?.(distance, angle);
+                  // Reset input for next copy
+                  setDynamicInput((prev) => ({
+                    ...prev,
+                    value1: "",
+                    value2: "",
+                  }));
+                }
+              } else if (e.key === "Escape") {
+                onMoveCopyCancel?.();
+              }
+            }}
+            style={{
+              ...inputStyle(dynamicInput.focusField === 2, "#ffa500"),
+              width: 40,
+            }}
+            placeholder="°"
+          />
+        </div>
+      )}
+
+      {/* ==================== OFFSET mode - single distance input ==================== */}
+      {dynamicInput.mode === "offset-distance" && (
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <span
+            style={{
+              ...labelStyle(dynamicInput.focusField === 1, "#ff6b35"),
+              fontWeight: "bold",
+            }}
+          >
+            OFFSET:
+          </span>
+          <input
+            ref={inputRef1}
+            type="text"
+            value={dynamicInput.value1}
+            onChange={(e) =>
+              setDynamicInput((prev) => ({
+                ...prev,
+                value1: filterNumericInput(e.target.value),
+              }))
+            }
+            onFocus={() =>
+              setDynamicInput((prev) => ({ ...prev, focusField: 1 }))
+            }
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                const distance = parseFloat(dynamicInput.value1);
+                if (!isNaN(distance) && distance > 0) {
+                  onOffsetDistanceInput?.(distance);
+                  // Keep input for next offset (don't clear)
+                }
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                onOffsetCancel?.();
+              }
+            }}
+            style={{
+              ...inputStyle(dynamicInput.focusField === 1, "#ff6b35"),
+              width: 60,
+            }}
+            placeholder="mm"
+            autoFocus
           />
         </div>
       )}

@@ -11,15 +11,33 @@ export interface ProjectInfo {
   id: string;
   name: string;
   description?: string;
+  // Thông tin chủ đầu tư
+  investor?: string; // Chủ đầu tư
+  investorPhone?: string;
+  investorEmail?: string;
+  // Địa chỉ công trình
+  houseNumber?: string; // Số nhà
+  street?: string; // Tên đường
+  ward?: string; // Phường/Xã
+  district?: string; // Quận/Huyện
+  city?: string; // Thành phố/Tỉnh
+  // Thông tin liên hệ (khác chủ đầu tư)
   customer?: string;
   address?: string;
   phone?: string;
   email?: string;
+  // Thông tin dự án
+  projectType?: string; // Loại công trình (nhà ở, văn phòng, etc.)
+  area?: number; // Diện tích (m2)
+  startDate?: string; // Ngày bắt đầu
+  expectedEndDate?: string; // Ngày dự kiến hoàn thành
+  // Metadata
   created: string;
   modified: string;
   status: "draft" | "active" | "completed" | "archived";
   thumbnail?: string;
   tags?: string[];
+  notes?: string; // Ghi chú thêm
 }
 
 export interface BomItem {

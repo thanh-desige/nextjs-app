@@ -854,12 +854,12 @@ export function hitTestGeometry(
     case "ARC": {
       const distToCenter = distance(point, geometry.center);
       if (Math.abs(distToCenter - geometry.radius) > tolerance) return false;
-      // Check if angle is within arc range
+      // Check if angle is within arc range - must match rendering logic
       const angle = Math.atan2(
         point.y - geometry.center.y,
         point.x - geometry.center.x
       );
-      return isAngleInRange(angle, geometry.startAngle, geometry.endAngle);
+      return isAngleInArcRange(angle, geometry.startAngle, geometry.endAngle);
     }
 
     default:
@@ -906,5 +906,33 @@ function isAngleInRange(angle: number, start: number, end: number): boolean {
     return normAngle >= normStart && normAngle <= normEnd;
   } else {
     return normAngle >= normStart || normAngle <= normEnd;
+  }
+}
+
+/**
+ * Check if angle is within arc range - matches rendering logic
+ * Arc is drawn from startAngle in the direction of sweep (endAngle - startAngle)
+ */
+function isAngleInArcRange(
+  angle: number,
+  startAngle: number,
+  endAngle: number
+): boolean {
+  // Calculate sweep same as rendering
+  let sweep = endAngle - startAngle;
+  while (sweep > Math.PI) sweep -= 2 * Math.PI;
+  while (sweep < -Math.PI) sweep += 2 * Math.PI;
+
+  // Normalize angle relative to startAngle
+  let relativeAngle = angle - startAngle;
+  while (relativeAngle > Math.PI) relativeAngle -= 2 * Math.PI;
+  while (relativeAngle < -Math.PI) relativeAngle += 2 * Math.PI;
+
+  if (sweep > 0) {
+    // Arc goes CCW from startAngle
+    return relativeAngle >= 0 && relativeAngle <= sweep;
+  } else {
+    // Arc goes CW from startAngle (sweep is negative)
+    return relativeAngle <= 0 && relativeAngle >= sweep;
   }
 }

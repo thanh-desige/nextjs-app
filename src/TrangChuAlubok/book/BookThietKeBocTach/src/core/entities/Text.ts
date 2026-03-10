@@ -5,7 +5,11 @@
 import { Vec2, IVec2 } from "../geometry/Vec2";
 import { Matrix3 } from "../geometry/Matrix3";
 import { BoundingBox } from "../geometry/GeometryUtils";
-import { BaseEntity, createGripPoint } from "./BaseEntity";
+import {
+  initEntityBase,
+  createGripPoint,
+  serializeEntityBase,
+} from "./EntityBaseUtils";
 import {
   EntityType,
   EntityStyle,
@@ -33,8 +37,19 @@ const DEFAULT_TEXT_STYLE: TextStyle = {
   textBaseline: "middle",
 };
 
-export class TextEntity extends BaseEntity implements ITextEntity {
+export class TextEntity implements ITextEntity {
+  public id: string;
   public readonly type = EntityType.TEXT;
+  public name?: string;
+  public layerId: string;
+  public style: EntityStyle;
+  public state: {
+    selected: boolean;
+    hovered: boolean;
+    visible: boolean;
+    locked: boolean;
+  };
+  public metadata?: Record<string, unknown>;
   public position: Vec2;
   public text: string;
   public fontSize: number;
@@ -55,9 +70,15 @@ export class TextEntity extends BaseEntity implements ITextEntity {
       style?: Partial<EntityStyle>;
       textStyle?: Partial<TextStyle>;
       rotation?: number;
-    }
+    },
   ) {
-    super(options);
+    const base = initEntityBase(options);
+    this.id = base.id;
+    this.name = base.name;
+    this.layerId = base.layerId;
+    this.style = base.style;
+    this.state = base.state;
+    this.metadata = base.metadata;
     this.position = Vec2.from(position);
     this.text = text;
 
@@ -77,7 +98,7 @@ export class TextEntity extends BaseEntity implements ITextEntity {
     position: IVec2,
     text: string,
     style?: Partial<EntityStyle>,
-    textStyle?: Partial<TextStyle>
+    textStyle?: Partial<TextStyle>,
   ): TextEntity {
     return new TextEntity(position, text, { style, textStyle });
   }
@@ -130,6 +151,9 @@ export class TextEntity extends BaseEntity implements ITextEntity {
 
   clone(): TextEntity {
     const cloned = new TextEntity(this.position.clone(), this.text, {
+      layerId: this.layerId,
+      style: { ...this.style },
+      name: this.name,
       textStyle: {
         fontSize: this.fontSize,
         fontFamily: this.fontFamily,
@@ -140,7 +164,8 @@ export class TextEntity extends BaseEntity implements ITextEntity {
       },
       rotation: this.rotation,
     });
-    cloned.copyBaseFrom(this);
+    cloned.state = { ...this.state };
+    cloned.metadata = this.metadata ? { ...this.metadata } : undefined;
     return cloned;
   }
 
@@ -180,7 +205,7 @@ export class TextEntity extends BaseEntity implements ITextEntity {
     if (this.rotation !== 0) {
       const matrix = Matrix3.translation(
         this.position.x,
-        this.position.y
+        this.position.y,
       ).rotate(this.rotation);
 
       let minX = Infinity,
@@ -203,7 +228,7 @@ export class TextEntity extends BaseEntity implements ITextEntity {
       min: new Vec2(this.position.x + offsetX, this.position.y + offsetY),
       max: new Vec2(
         this.position.x + offsetX + width,
-        this.position.y + offsetY + height
+        this.position.y + offsetY + height,
       ),
     };
   }
@@ -222,7 +247,7 @@ export class TextEntity extends BaseEntity implements ITextEntity {
     const bounds = this.getBounds();
     const center = new Vec2(
       (bounds.min.x + bounds.max.x) / 2,
-      (bounds.min.y + bounds.max.y) / 2
+      (bounds.min.y + bounds.max.y) / 2,
     );
 
     return [
@@ -233,7 +258,7 @@ export class TextEntity extends BaseEntity implements ITextEntity {
         new Vec2(center.x, bounds.min.y - 20),
         GripType.ROTATION,
         this.id,
-        2
+        2,
       ),
     ];
   }
@@ -247,7 +272,7 @@ export class TextEntity extends BaseEntity implements ITextEntity {
         const bounds = this.getBounds();
         const center = new Vec2(
           (bounds.min.x + bounds.max.x) / 2,
-          (bounds.min.y + bounds.max.y) / 2
+          (bounds.min.y + bounds.max.y) / 2,
         );
         const dx = newPosition.x - center.x;
         const dy = newPosition.y - center.y;
@@ -257,12 +282,12 @@ export class TextEntity extends BaseEntity implements ITextEntity {
         const current = this.getBounds();
         const currentCenter = new Vec2(
           (current.min.x + current.max.x) / 2,
-          (current.min.y + current.max.y) / 2
+          (current.min.y + current.max.y) / 2,
         );
         this.rotation =
           Math.atan2(
             newPosition.y - currentCenter.y,
-            newPosition.x - currentCenter.x
+            newPosition.x - currentCenter.x,
           ) +
           Math.PI / 2;
         break;
@@ -281,6 +306,33 @@ export class TextEntity extends BaseEntity implements ITextEntity {
     const rotated = this.position.rotateAround(center, angle);
     this.position.copy(rotated);
     this.rotation += angle;
+  }
+
+  /**
+   * Scale text entity from a center point
+   * ========================================================================
+   * 2D FIRST, 3D READY: SCALE for TEXT
+   * ========================================================================
+   * When scaling TEXT:
+   * - Position is scaled (inherited from BaseEntity via getPoints)
+   * - fontSize (fontSizeMm) is ALSO scaled - this is the SOURCE OF TRUTH
+   * - SVG export will use the new fontSize
+   * ========================================================================
+   * @param sx Scale factor X
+   * @param sy Scale factor Y (for uniform scaling, use same as sx)
+   * @param center Center point for scaling
+   */
+  scale(sx: number, sy: number, center: IVec2): void {
+    // Scale position (inherited logic)
+    const matrix = Matrix3.scalingFrom(center, sx, sy);
+    const transformed = matrix.transformPoint(this.position);
+    this.position.x = transformed.x;
+    this.position.y = transformed.y;
+
+    // Scale fontSize - use average of sx, sy for uniform text scaling
+    // (text should scale uniformly to avoid distortion)
+    const uniformScale = Math.abs((sx + sy) / 2);
+    this.fontSize = this.fontSize * uniformScale;
   }
 
   // ==================== Text-specific Methods ====================
@@ -309,7 +361,7 @@ export class TextEntity extends BaseEntity implements ITextEntity {
 
   toJSON(): EntityJSON {
     return {
-      ...this.serializeBase(),
+      ...serializeEntityBase(this),
       type: this.type,
       position: this.position.toObject(),
       text: this.text,

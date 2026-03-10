@@ -11,6 +11,10 @@
  * - Hook này quản lý active command và điều phối events
  * - Command classes xử lý logic tạo dimension
  * - DimensionManager xử lý render
+ *
+ * ASSOCIATIVE DIMENSIONS:
+ * - Snap results are captured when user clicks with OSNAP
+ * - Entity references are stored in dimension for auto-update
  */
 
 import { useState, useCallback, useRef, useMemo } from "react";
@@ -25,6 +29,7 @@ import {
   DEFAULT_DIMENSION_STYLE,
   QdimMode,
 } from "../core/dimensions/DimensionManager";
+import { OsnapResult } from "../core/osnap/Osnap.types";
 import { useEngineStore } from "../store/engineStore";
 import {
   AddDimensionCommand,
@@ -48,6 +53,8 @@ export interface DimensionCommandState {
   dimensionType: DimensionType;
   step: number;
   points: Point[];
+  /** OSNAP results for each point (for associative dimensions) */
+  snapResults: (OsnapResult | null)[];
   direction: DimensionDirection;
   // Continue/Baseline mode
   lastDimension: DimensionEntity | null;
@@ -71,7 +78,8 @@ export interface UseDimensionCommandsReturn {
   // Drawing
   handleClick: (
     point: Point,
-    entityRef?: EntityReference
+    entityRef?: EntityReference,
+    snapResult?: OsnapResult | null
   ) => DimensionEntity | null;
   handleMove: (point: Point) => void;
 
@@ -111,6 +119,7 @@ const initialCommandState: DimensionCommandState = {
   dimensionType: "linear",
   step: 0,
   points: [],
+  snapResults: [],
   direction: "auto",
   lastDimension: null,
   isContinueMode: false,
@@ -216,32 +225,39 @@ export function useDimensionCommands(): UseDimensionCommandsReturn {
   // ============================================
 
   const handleClick = useCallback(
-    (point: Point, _entityRef?: EntityReference): DimensionEntity | null => {
+    (
+      point: Point,
+      _entityRef?: EntityReference,
+      snapResult?: OsnapResult | null
+    ): DimensionEntity | null => {
       if (!commandState.isActive) return null;
 
-      const { dimensionType, points } = commandState;
+      const { dimensionType, points, snapResults } = commandState;
 
       // DLI - Linear
       if (dimensionType === "linear" && linearCommandRef.current) {
         const newPoints = [...points, point];
+        const newSnapResults = [...snapResults, snapResult || null];
 
         if (newPoints.length < 3) {
-          // Collecting points
+          // Collecting points - store snap result for later
           setCommandState((prev) => ({
             ...prev,
             step: newPoints.length,
             points: newPoints,
+            snapResults: newSnapResults,
           }));
           return null;
         }
 
-        // Execute command with 3 points
+        // Execute command with 3 points + snap results
         const context = {
           engine: null as never, // Not used by DimLinearCommand
           points: newPoints.map((p) => ({ x: p.x, y: p.y })),
           options: {},
           style: {} as never,
           layerId: "",
+          snapResults: newSnapResults, // Pass snap results for associative dimensions
         };
 
         const result = linearCommandRef.current.execute(context);
@@ -258,6 +274,7 @@ export function useDimensionCommands(): UseDimensionCommandsReturn {
             ...prev,
             step: 0,
             points: [],
+            snapResults: [],
             lastDimension: dimension,
           }));
           setPreviewDimension(null);
@@ -269,12 +286,14 @@ export function useDimensionCommands(): UseDimensionCommandsReturn {
       // DAL - Aligned
       if (dimensionType === "aligned" && alignedCommandRef.current) {
         const newPoints = [...points, point];
+        const newSnapResults = [...snapResults, snapResult || null];
 
         if (newPoints.length < 3) {
           setCommandState((prev) => ({
             ...prev,
             step: newPoints.length,
             points: newPoints,
+            snapResults: newSnapResults,
           }));
           return null;
         }
@@ -285,6 +304,7 @@ export function useDimensionCommands(): UseDimensionCommandsReturn {
           options: {},
           style: {} as never,
           layerId: "",
+          snapResults: newSnapResults,
         };
 
         const result = alignedCommandRef.current.execute(context);
@@ -300,6 +320,7 @@ export function useDimensionCommands(): UseDimensionCommandsReturn {
             ...prev,
             step: 0,
             points: [],
+            snapResults: [],
             lastDimension: dimension,
           }));
           setPreviewDimension(null);

@@ -7,10 +7,20 @@ import { Point } from "./geometry";
 
 /**
  * CadEntity type for offset calculations
+ * Note: "dimension" is included for type compatibility but not used for offset
  */
 export interface OffsetCadEntity {
-  type: "line" | "polyline" | "rect" | "circle" | "arc" | "ellipse" | "text";
+  type:
+    | "line"
+    | "polyline"
+    | "rect"
+    | "circle"
+    | "arc"
+    | "ellipse"
+    | "text"
+    | "dimension";
   points: Point[];
+  closed?: boolean;
 }
 
 /**
@@ -24,7 +34,12 @@ export const calculateOffsetPreview = (
   switch (entity.type) {
     case "line":
     case "polyline":
-      return calculateOffsetLinePreview(entity.points, dist, throughPoint);
+      return calculateOffsetLinePreview(
+        entity.points,
+        dist,
+        throughPoint,
+        entity.closed === true
+      );
     case "rect":
       return calculateOffsetRectPreview(entity.points, dist, throughPoint);
     case "circle":
@@ -40,10 +55,12 @@ export const calculateOffsetPreview = (
 export const calculateOffsetLinePreview = (
   points: Point[],
   dist: number,
-  throughPoint: Point
+  throughPoint: Point,
+  isClosed: boolean = false
 ): Point[] => {
   if (points.length < 2) return [];
 
+  const n = points.length;
   const offsetPoints: Point[] = [];
 
   // Calculate center to determine offset side
@@ -53,22 +70,23 @@ export const calculateOffsetLinePreview = (
     centerX += p.x;
     centerY += p.y;
   }
-  centerX /= points.length;
-  centerY /= points.length;
+  centerX /= n;
+  centerY /= n;
 
   // Vector from center to throughPoint to determine side
   const toThroughX = throughPoint.x - centerX;
   const toThroughY = throughPoint.y - centerY;
 
-  for (let i = 0; i < points.length; i++) {
+  for (let i = 0; i < n; i++) {
     let perpX = 0,
       perpY = 0;
     let count = 0;
 
-    // Previous segment
-    if (i > 0) {
-      const dx = points[i].x - points[i - 1].x;
-      const dy = points[i].y - points[i - 1].y;
+    // Previous segment (with closed: point 0 connects to last point)
+    const prevIdx = isClosed ? (i - 1 + n) % n : i - 1;
+    if (isClosed || i > 0) {
+      const dx = points[i].x - points[prevIdx].x;
+      const dy = points[i].y - points[prevIdx].y;
       const len = Math.sqrt(dx * dx + dy * dy);
       if (len > 0) {
         perpX += -dy / len;
@@ -77,10 +95,11 @@ export const calculateOffsetLinePreview = (
       }
     }
 
-    // Next segment
-    if (i < points.length - 1) {
-      const dx = points[i + 1].x - points[i].x;
-      const dy = points[i + 1].y - points[i].y;
+    // Next segment (with closed: last point connects to point 0)
+    const nextIdx = isClosed ? (i + 1) % n : i + 1;
+    if (isClosed || i < n - 1) {
+      const dx = points[nextIdx].x - points[i].x;
+      const dy = points[nextIdx].y - points[i].y;
       const len = Math.sqrt(dx * dx + dy * dy);
       if (len > 0) {
         perpX += -dy / len;

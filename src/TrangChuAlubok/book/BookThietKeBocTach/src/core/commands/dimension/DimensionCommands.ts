@@ -51,13 +51,59 @@ export class AddDimensionCommand implements ICommand {
       return { success: false, message: "Document not available in context" };
     }
 
+    // ========================================================================
+    // 2D FIRST, 3D READY: LEGACY RADIAL/DIAMETER SHORT-CIRCUIT
+    // ========================================================================
+    // Legacy radial/diameter dimensions are DISPLAY-ONLY:
+    // - ref1 is OPTIONAL, MUST NOT be validated
+    // - Skip ALL invariant checks, validation, indexing, lifecycle
+    // - Never enter history re-binding or undo invariants
+    // - If this type reaches validateDimensionRefs, it's a BUG
+    // ========================================================================
+    const isLegacyRadial =
+      this.dimension.isLegacy &&
+      (this.dimension.dimensionType === "radius" ||
+        this.dimension.dimensionType === "diameter");
+
+    if (isLegacyRadial) {
+      console.log(
+        `[AddDimensionCommand] LEGACY RADIAL SHORT-CIRCUIT: ${this.dimension.id} ` +
+          `(${this.dimension.dimensionType}) - display-only, no validation, no indexing`
+      );
+      // Store for undo
+      this.data = { dimension: { ...this.dimension } };
+      // Direct add without validation - completely bypass validateDimensionRefs
+      dimContext.document.addLegacyRadialDimension(this.dimension);
+      context.engine.requestRender();
+      return {
+        success: true,
+        message: `Added legacy ${this.dimension.dimensionType} dimension (display-only)`,
+        data: { dimension: this.dimension },
+      };
+    }
+
     // Store for undo
     this.data = {
       dimension: { ...this.dimension },
     };
 
-    // Add to document
-    dimContext.document.addDimension(this.dimension);
+    // ========== GUARD RULE: Validate and add to document ==========
+    // addDimension will throw INVARIANT VIOLATION if refs are invalid
+    // This prevents "orphan dimensions" from being committed
+    try {
+      dimContext.document.addDimension(this.dimension);
+    } catch (error) {
+      // ABORT: Dimension refs are invalid - do not commit
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error("[AddDimensionCommand] ABORT:", errorMessage);
+      this.data = null; // Clear data to prevent undo of failed operation
+      return {
+        success: false,
+        message: `ABORT: ${errorMessage}`,
+      };
+    }
+
     context.engine.requestRender();
 
     return {
@@ -87,7 +133,8 @@ export class AddDimensionCommand implements ICommand {
       return { success: false, message: "Document not available" };
     }
 
-    dimContext.document.addDimension(this.data.dimension);
+    // Use restoreDimension to bypass validation (dimension was already validated when first created)
+    dimContext.document.restoreDimension(this.data.dimension);
     context.engine.requestRender();
 
     return {
@@ -247,7 +294,8 @@ export class DeleteDimensionCommand implements ICommand {
     const dimContext = context as DimensionCommandContext;
     if (!dimContext.document) return;
 
-    dimContext.document.addDimension(this.data.dimension);
+    // Use restoreDimension to bypass validation (dimension was valid when deleted)
+    dimContext.document.restoreDimension(this.data.dimension);
     context.engine.requestRender();
   }
 
@@ -285,6 +333,7 @@ export class BatchAddDimensionCommand implements ICommand {
   readonly canUndo = true;
 
   private data: BatchDimensionData | null = null;
+  private addedDimensions: DimensionEntity[] = [];
 
   constructor(private dimensions: DimensionEntity[]) {}
 
@@ -298,19 +347,63 @@ export class BatchAddDimensionCommand implements ICommand {
       return { success: false, message: "Document not available in context" };
     }
 
-    // Store for undo
+    // ========== GUARD RULE: Validate and add each dimension ==========
+    // Only add dimensions that pass INVARIANT validation
+    // Skip orphan dimensions (those with invalid refs)
+    // EXCEPTION: Legacy radial/diameter dimensions short-circuit validation
+    this.addedDimensions = [];
+    const errors: string[] = [];
+
+    for (const dim of this.dimensions) {
+      // ========== LEGACY RADIAL SHORT-CIRCUIT ==========
+      const isLegacyRadial =
+        dim.isLegacy &&
+        (dim.dimensionType === "radius" || dim.dimensionType === "diameter");
+
+      if (isLegacyRadial) {
+        console.log(
+          `[BatchAddDimensionCommand] LEGACY RADIAL SHORT-CIRCUIT: ${dim.id} ` +
+            `(${dim.dimensionType}) - display-only, no validation`
+        );
+        dimContext.document.addLegacyRadialDimension(dim);
+        this.addedDimensions.push({ ...dim });
+        continue;
+      }
+
+      try {
+        dimContext.document.addDimension(dim);
+        this.addedDimensions.push({ ...dim });
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        errors.push(errorMessage);
+        console.error(
+          "[BatchAddDimensionCommand] Skipping invalid dimension:",
+          errorMessage
+        );
+      }
+    }
+
+    // Store for undo (only successfully added dimensions)
     this.data = {
-      dimensions: this.dimensions.map((d) => ({ ...d })),
+      dimensions: this.addedDimensions,
     };
 
-    // Add all to document
-    dimContext.document.addDimensions(this.dimensions);
     context.engine.requestRender();
+
+    if (this.addedDimensions.length === 0) {
+      return {
+        success: false,
+        message: `All dimensions failed validation: ${errors.join("; ")}`,
+      };
+    }
 
     return {
       success: true,
-      message: `Added ${this.dimensions.length} dimensions`,
-      data: { dimensions: this.dimensions },
+      message: `Added ${this.addedDimensions.length} dimensions${
+        errors.length > 0 ? ` (${errors.length} skipped)` : ""
+      }`,
+      data: { dimensions: this.addedDimensions },
     };
   }
 
@@ -336,7 +429,8 @@ export class BatchAddDimensionCommand implements ICommand {
       return { success: false, message: "Document not available" };
     }
 
-    dimContext.document.addDimensions(this.data.dimensions);
+    // Use restoreDimensions to bypass validation (dimensions were already validated when first created)
+    dimContext.document.restoreDimensions(this.data.dimensions);
     context.engine.requestRender();
 
     return {
@@ -403,7 +497,8 @@ export class BatchDeleteDimensionCommand implements ICommand {
     const dimContext = context as DimensionCommandContext;
     if (!dimContext.document) return;
 
-    dimContext.document.addDimensions(this.data.dimensions);
+    // Use restoreDimensions to bypass validation (dimensions were valid when deleted)
+    dimContext.document.restoreDimensions(this.data.dimensions);
     context.engine.requestRender();
   }
 

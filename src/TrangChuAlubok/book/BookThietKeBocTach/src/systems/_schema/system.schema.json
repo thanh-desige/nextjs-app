@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Door System Schema",
+  "description": "Schema cho dữ liệu hãng/hệ cửa nhôm kính",
+  "type": "object",
+  "required": ["id", "name", "brand", "profiles", "accessories"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "ID duy nhất của hệ (vd: xf55, pma55)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Tên hiển thị (vd: Xingfa 55)"
+    },
+    "brand": {
+      "type": "string",
+      "description": "Tên hãng (vd: Xingfa, PMA, Việt Pháp)"
+    },
+    "version": {
+      "type": "string",
+      "description": "Phiên bản dữ liệu"
+    },
+    "profiles": {
+      "type": "object",
+      "description": "Danh sách profile (thanh nhôm)",
+      "additionalProperties": {
+        "$ref": "#/definitions/Profile"
+      }
+    },
+    "accessories": {
+      "type": "object",
+      "description": "Danh sách phụ kiện",
+      "additionalProperties": {
+        "$ref": "#/definitions/Accessory"
+      }
+    },
+    "glass": {
+      "type": "object",
+      "description": "Thông số kính hỗ trợ",
+      "properties": {
+        "minThickness": { "type": "number" },
+        "maxThickness": { "type": "number" },
+        "supportedTypes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "description": "Ràng buộc kỹ thuật",
+      "properties": {
+        "maxWidth": { "type": "number" },
+        "maxHeight": { "type": "number" },
+        "minWidth": { "type": "number" },
+        "minHeight": { "type": "number" }
+      }
+    }
+  },
+  "definitions": {
+    "Profile": {
+      "type": "object",
+      "required": ["code", "name", "width", "height", "weight"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Mã profile (vd: XF55-001)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Tên profile (vd: Khung bao)"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["frame", "sash", "mullion", "transom", "bead", "other"],
+          "description": "Loại profile"
+        },
+        "width": {
+          "type": "number",
+          "description": "Chiều rộng mặt cắt (mm)"
+        },
+        "height": {
+          "type": "number",
+          "description": "Chiều cao mặt cắt (mm)"
+        },
+        "weight": {
+          "type": "number",
+          "description": "Trọng lượng (kg/m)"
+        },
+        "price": {
+          "type": "number",
+          "description": "Đơn giá (VND/m)"
+        },
+        "color": {
+          "type": "string",
+          "description": "Màu mặc định"
+        }
+      }
+    },
+    "Accessory": {
+      "type": "object",
+      "required": ["code", "name", "unit"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Mã phụ kiện"
+        },
+        "name": {
+          "type": "string",
+          "description": "Tên phụ kiện"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "hinge",
+            "handle",
+            "lock",
+            "roller",
+            "seal",
+            "corner",
+            "screw",
+            "other"
+          ],
+          "description": "Loại phụ kiện"
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["pcs", "set", "m", "kg"],
+          "description": "Đơn vị tính"
+        },
+        "price": {
+          "type": "number",
+          "description": "Đơn giá"
+        },
+        "applicableTo": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Áp dụng cho loại cửa nào"
+        }
+      }
+    }
+  }
+}

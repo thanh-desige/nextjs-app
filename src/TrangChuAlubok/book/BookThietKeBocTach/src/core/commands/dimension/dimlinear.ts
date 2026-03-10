@@ -6,6 +6,10 @@
  * - Step 0→1: Chọn điểm 1
  * - Step 1→2: Chọn điểm 2, tự động detect hướng dựa trên góc
  * - Step 2→3: Kéo chuột để xác định offset, hướng dim theo vị trí chuột
+ *
+ * ASSOCIATIVE DIMENSIONS:
+ * - When points are snapped to entities (via OSNAP), store entity references
+ * - Dimensions will follow when referenced entities are moved/modified
  */
 
 import { IVec2 } from "../../geometry/Vec2";
@@ -19,7 +23,89 @@ import {
 import {
   DimensionEntity,
   DimensionManager,
+  EntityReference,
 } from "../../dimensions/DimensionManager";
+import { OsnapMode, OsnapResult } from "../../osnap/Osnap.types";
+
+/**
+ * Convert OsnapMode to EntityReference snapType
+ */
+function osnapModeToSnapType(mode: OsnapMode): EntityReference["snapType"] {
+  switch (mode) {
+    case OsnapMode.ENDPOINT:
+      return "endpoint";
+    case OsnapMode.MIDPOINT:
+      return "midpoint";
+    case OsnapMode.CENTER:
+      return "center";
+    case OsnapMode.QUADRANT:
+      return "quadrant";
+    case OsnapMode.INTERSECTION:
+      return "intersection";
+    case OsnapMode.NEAREST:
+      return "nearest";
+    default:
+      return "endpoint";
+  }
+}
+
+/**
+ * Create EntityReference from OsnapResult
+ * Includes pointIndex for accurate point tracking during entity modifications
+ */
+function createEntityRefFromSnap(
+  snap: OsnapResult
+): EntityReference | undefined {
+  if (!snap.entity) {
+    return undefined;
+  }
+
+  const entityType = snap.entity
+    .type as unknown as EntityReference["entityType"];
+
+  // Only support known entity types
+  if (!["line", "circle", "arc", "polyline", "rect"].includes(entityType)) {
+    return undefined;
+  }
+
+  // Calculate pointIndex for endpoint snaps
+  let pointIndex: number | undefined;
+  // Cast to access points array (line, polyline, rect have points)
+  const entityWithPoints = snap.entity as unknown as {
+    points?: { x: number; y: number }[];
+  };
+  if (
+    snap.mode === OsnapMode.ENDPOINT &&
+    entityWithPoints.points &&
+    entityWithPoints.points.length > 0
+  ) {
+    // Find which point index was snapped to
+    let closestIndex = 0;
+    let minDist = Infinity;
+    for (let i = 0; i < entityWithPoints.points.length; i++) {
+      const p = entityWithPoints.points[i];
+      const dx = p.x - snap.point.x;
+      const dy = p.y - snap.point.y;
+      const dist = dx * dx + dy * dy;
+      if (dist < minDist) {
+        minDist = dist;
+        closestIndex = i;
+      }
+    }
+    // Only set pointIndex if we found a close match (within 1 unit)
+    if (minDist < 1) {
+      pointIndex = closestIndex;
+    }
+  }
+
+  return {
+    entityId: snap.entity.id,
+    entityType,
+    snapType: osnapModeToSnapType(snap.mode),
+    point: { x: snap.point.x, y: snap.point.y },
+    pointIndex,
+  };
+}
 
 export class DimLinearCommand
   implements IInteractiveCommand<DimensionEntity | null>
@@ -166,16 +252,39 @@ export class DimLinearCommand
       direction
     );
 
+    // Create entity references from OSNAP results (for associative dimensions)
+    let ref1: EntityReference | undefined;
+    let ref2: EntityReference | undefined;
+
+    if (context.snapResults && context.snapResults.length >= 2) {
+      const snap1 = context.snapResults[0];
+      const snap2 = context.snapResults[1];
+
+      if (snap1) {
+        ref1 = createEntityRefFromSnap(snap1);
+      }
+      if (snap2) {
+        ref2 = createEntityRefFromSnap(snap2);
+      }
+    }
+
     this.createdDimension = this.manager.createLinearDimension({
       point1: p1,
       point2: p2,
       offset,
       direction,
+      ref1,
+      ref2,
     });
+
+    const isAssociative = !!(ref1 || ref2);
+    const msg = isAssociative
+      ? `Created associative linear dimension: ${this.createdDimension.id}`
+      : `Created linear dimension: ${this.createdDimension.id}`;
 
     return {
       success: true,
-      message: `Created linear dimension: ${this.createdDimension.id}`,
+      message: msg,
       data: { dimension: this.createdDimension },
     };
   }

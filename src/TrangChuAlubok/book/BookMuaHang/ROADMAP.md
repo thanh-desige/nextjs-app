@@ -1,0 +1,51 @@
+# BookMuaHang/ — ROADMAP
+
+> B8-B9: Đơn mua hàng + Yêu cầu mua hàng — dòng tiền ra
+> Tham chiếu: `../PERMISSION_CATALOG.md`
+
+---
+
+## Trạng thái: 🟡 Có code sẵn (MuaHangPage + 7 category components)
+
+## Ưu tiên: ⭐ Trung bình
+
+## Phụ thuộc: shared/, DanhMuc/
+
+---
+
+## Code hiện tại
+
+- `BookMuaHang.tsx` — 14 dòng placeholder
+- `MuaHangPage/MuaHangPage.tsx` — Giao diện shop mua vật tư
+- `MuaHangPage/categories/` — 7 tab: TongHop, NhomThanh, PhuKienNhom, Kinh, PhuKienKinh, InoxThanh, InoxTam
+
+> **Lưu ý**: MuaHangPage hiện tại là **shop mua vật tư từ ALUBOK** (B2C). Catalog định nghĩa **Purchase Order** (B2B). Cần quyết định: gom chung hay tách riêng?
+
+---
+
+## Phạm vi (từ Catalog)
+
+| Catalog | Resource | Mô tả |
+|---------|----------|-------|
+| B8 | `purchase.order` | Đơn đặt mua: CRUD + duyệt + tracking |
+| B9 | `purchase.request` | Yêu cầu mua hàng: CRUD + duyệt |
+| C6 | `report.purchase` | Báo cáo mua hàng |
+
+---
+
+## Luồng nghiệp vụ
+
+```
+Yêu cầu mua (Purchase Request) → Duyệt → Đơn mua (Purchase Order) → Nhập kho (BookTonKho) → Thanh toán (BookThuChi)
+```
+
+---
+
+## Checklist
+
+- [ ] Purchase Request CRUD + approval workflow
+- [ ] Purchase Order CRUD + tracking
+- [ ] Tích hợp với shop MuaHangPage hiện tại
+- [ ] Nhập kho tự động khi PO confirm
+- [ ] Reports: báo cáo mua hàng
+- [ ] Permission: `purchase.order:approve`, `purchase.request:create`...

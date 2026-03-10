@@ -9,7 +9,11 @@ import {
   normalizeAngle,
   EPSILON,
 } from "../geometry/GeometryUtils";
-import { BaseEntity, createGripPoint } from "./BaseEntity";
+import {
+  initEntityBase,
+  createGripPoint,
+  serializeEntityBase,
+} from "./EntityBaseUtils";
 import {
   EntityType,
   EntityStyle,
@@ -19,8 +23,19 @@ import {
   IArcEntity,
 } from "./Entity.types";
 
-export class ArcEntity extends BaseEntity implements IArcEntity {
+export class ArcEntity implements IArcEntity {
+  public id: string;
   public readonly type = EntityType.ARC;
+  public name?: string;
+  public layerId: string;
+  public style: EntityStyle;
+  public state: {
+    selected: boolean;
+    hovered: boolean;
+    visible: boolean;
+    locked: boolean;
+  };
+  public metadata?: Record<string, unknown>;
   public center: Vec2;
   public radius: number;
   public startAngle: number; // radian
@@ -36,9 +51,15 @@ export class ArcEntity extends BaseEntity implements IArcEntity {
       name?: string;
       layerId?: string;
       style?: Partial<EntityStyle>;
-    }
+    },
   ) {
-    super(options);
+    const base = initEntityBase(options);
+    this.id = base.id;
+    this.name = base.name;
+    this.layerId = base.layerId;
+    this.style = base.style;
+    this.state = base.state;
+    this.metadata = base.metadata;
     this.center = Vec2.from(center);
     this.radius = Math.abs(radius);
     this.startAngle = startAngle;
@@ -52,7 +73,7 @@ export class ArcEntity extends BaseEntity implements IArcEntity {
     radius: number,
     startAngle: number,
     endAngle: number,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): ArcEntity {
     return new ArcEntity(center, radius, startAngle, endAngle, { style });
   }
@@ -62,12 +83,12 @@ export class ArcEntity extends BaseEntity implements IArcEntity {
     center: IVec2,
     startPoint: IVec2,
     endPoint: IVec2,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): ArcEntity {
     const radius = distancePointToPoint(center, startPoint);
     const startAngle = Math.atan2(
       startPoint.y - center.y,
-      startPoint.x - center.x
+      startPoint.x - center.x,
     );
     const endAngle = Math.atan2(endPoint.y - center.y, endPoint.x - center.x);
     return new ArcEntity(center, radius, startAngle, endAngle, { style });
@@ -78,7 +99,7 @@ export class ArcEntity extends BaseEntity implements IArcEntity {
     startPoint: IVec2,
     midPoint: IVec2,
     endPoint: IVec2,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): ArcEntity | null {
     // Tính tâm đường tròn qua 3 điểm
     const ax = startPoint.x,
@@ -121,7 +142,7 @@ export class ArcEntity extends BaseEntity implements IArcEntity {
         name: json.name,
         layerId: json.layerId,
         style: json.style,
-      }
+      },
     );
     arc.metadata = json.metadata;
     return arc;
@@ -149,7 +170,7 @@ export class ArcEntity extends BaseEntity implements IArcEntity {
   getPointAtAngle(angle: number): Vec2 {
     return new Vec2(
       this.center.x + this.radius * Math.cos(angle),
-      this.center.y + this.radius * Math.sin(angle)
+      this.center.y + this.radius * Math.sin(angle),
     );
   }
 
@@ -196,9 +217,11 @@ export class ArcEntity extends BaseEntity implements IArcEntity {
       this.center.clone(),
       this.radius,
       this.startAngle,
-      this.endAngle
+      this.endAngle,
+      { layerId: this.layerId, style: { ...this.style }, name: this.name },
     );
-    cloned.copyBaseFrom(this);
+    cloned.state = { ...this.state };
+    cloned.metadata = this.metadata ? { ...this.metadata } : undefined;
     return cloned;
   }
 
@@ -261,7 +284,7 @@ export class ArcEntity extends BaseEntity implements IArcEntity {
       case 1: // Start point
         this.startAngle = Math.atan2(
           newPosition.y - this.center.y,
-          newPosition.x - this.center.x
+          newPosition.x - this.center.x,
         );
         break;
       case 2: // Mid point - change radius
@@ -270,7 +293,7 @@ export class ArcEntity extends BaseEntity implements IArcEntity {
       case 3: // End point
         this.endAngle = Math.atan2(
           newPosition.y - this.center.y,
-          newPosition.x - this.center.x
+          newPosition.x - this.center.x,
         );
         break;
     }
@@ -295,7 +318,7 @@ export class ArcEntity extends BaseEntity implements IArcEntity {
 
   toJSON(): EntityJSON {
     return {
-      ...this.serializeBase(),
+      ...serializeEntityBase(this),
       type: this.type,
       center: this.center.toObject(),
       radius: this.radius,

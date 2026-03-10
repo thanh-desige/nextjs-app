@@ -1,5 +1,7 @@
 /**
  * ROTATE Command - Xoay entities quanh điểm
+ *
+ * STEP-3.9: Uses EntityBridge for immutable transforms.
  */
 
 import {
@@ -10,7 +12,7 @@ import {
 } from "../Command.types";
 import { IVec2 } from "../../geometry/Vec2";
 import { IEntity } from "../../entities/Entity.types";
-import { BaseEntity } from "../../entities/BaseEntity";
+import { rotateIEntity } from "../../entities/EntityBridge";
 
 export class RotateCommand implements ICommand {
   readonly name = "ROTATE";
@@ -27,7 +29,7 @@ export class RotateCommand implements ICommand {
   constructor(
     private center: IVec2,
     private angle: number,
-    private entityIds?: string[]
+    private entityIds?: string[],
   ) {}
 
   execute(context: CommandContext): CommandResult {
@@ -56,10 +58,10 @@ export class RotateCommand implements ICommand {
       angle: this.angle,
     };
 
-    // Thực hiện xoay
+    // Thực hiện xoay qua EntityRegistry (immutable)
     for (const entity of entities) {
-      const baseEntity = entity as BaseEntity;
-      baseEntity.rotate(this.angle, this.center);
+      const rotated = rotateIEntity(entity, this.angle, this.center);
+      context.engine.updateEntity(entity.id, rotated);
     }
 
     context.engine.requestRender();
@@ -77,11 +79,16 @@ export class RotateCommand implements ICommand {
   undo(context: CommandContext): void {
     if (!this.data) return;
 
-    // Xoay ngược lại
+    // Xoay ngược lại (immutable)
     for (const entityId of this.data.entityIds) {
-      const entity = context.engine.getEntity(entityId) as BaseEntity;
+      const entity = context.engine.getEntity(entityId);
       if (entity) {
-        entity.rotate(-this.data.angle, this.data.center);
+        const rotated = rotateIEntity(
+          entity,
+          -this.data.angle,
+          this.data.center,
+        );
+        context.engine.updateEntity(entityId, rotated);
       }
     }
 
@@ -94,9 +101,14 @@ export class RotateCommand implements ICommand {
     }
 
     for (const entityId of this.data.entityIds) {
-      const entity = context.engine.getEntity(entityId) as BaseEntity;
+      const entity = context.engine.getEntity(entityId);
       if (entity) {
-        entity.rotate(this.data.angle, this.data.center);
+        const rotated = rotateIEntity(
+          entity,
+          this.data.angle,
+          this.data.center,
+        );
+        context.engine.updateEntity(entityId, rotated);
       }
     }
 
@@ -114,7 +126,7 @@ export class RotateCommand implements ICommand {
 export function createRotateCommand(
   center: IVec2,
   angleDegrees: number,
-  entityIds?: string[]
+  entityIds?: string[],
 ): RotateCommand {
   const angleRadians = (angleDegrees * Math.PI) / 180;
   return new RotateCommand(center, angleRadians, entityIds);

@@ -1,0 +1,184 @@
+{
+  "id": "xf55",
+  "name": "Xingfa 55",
+  "brand": "Xingfa",
+  "version": "1.0.0",
+  "description": "Hệ cửa nhôm Xingfa 55 - Cửa đi, cửa sổ mở quay",
+
+  "profiles": {
+    "frame": {
+      "code": "XF55-F01",
+      "name": "Khung bao",
+      "type": "frame",
+      "width": 55,
+      "height": 45,
+      "weight": 0.85,
+      "price": 125000,
+      "color": "white"
+    },
+    "sash": {
+      "code": "XF55-S01",
+      "name": "Khung cánh",
+      "type": "sash",
+      "width": 55,
+      "height": 62,
+      "weight": 0.92,
+      "price": 135000,
+      "color": "white"
+    },
+    "mullion": {
+      "code": "XF55-M01",
+      "name": "Đố đứng",
+      "type": "mullion",
+      "width": 55,
+      "height": 45,
+      "weight": 0.78,
+      "price": 115000,
+      "color": "white"
+    },
+    "transom": {
+      "code": "XF55-T01",
+      "name": "Đố ngang",
+      "type": "transom",
+      "width": 55,
+      "height": 45,
+      "weight": 0.78,
+      "price": 115000,
+      "color": "white"
+    },
+    "beadSquare": {
+      "code": "XF55-B01",
+      "name": "Nẹp kính vuông",
+      "type": "bead",
+      "width": 18,
+      "height": 22,
+      "weight": 0.25,
+      "price": 35000,
+      "color": "white"
+    },
+    "beadRound": {
+      "code": "XF55-B02",
+      "name": "Nẹp kính tròn",
+      "type": "bead",
+      "width": 18,
+      "height": 20,
+      "weight": 0.22,
+      "price": 32000,
+      "color": "white"
+    }
+  },
+
+  "accessories": {
+    "hinge3d": {
+      "code": "XF55-H01",
+      "name": "Bản lề 3D",
+      "type": "hinge",
+      "unit": "pcs",
+      "price": 85000,
+      "applicableTo": ["hinged-single", "hinged-double"]
+    },
+    "hinge2d": {
+      "code": "XF55-H02",
+      "name": "Bản lề 2D",
+      "type": "hinge",
+      "unit": "pcs",
+      "price": 45000,
+      "applicableTo": ["hinged-single", "hinged-double"]
+    },
+    "handleLever": {
+      "code": "XF55-HL01",
+      "name": "Tay nắm tay gạt",
+      "type": "handle",
+      "unit": "set",
+      "price": 180000,
+      "applicableTo": ["hinged-single", "hinged-double"]
+    },
+    "handlePull": {
+      "code": "XF55-HP01",
+      "name": "Tay nắm kéo",
+      "type": "handle",
+      "unit": "pcs",
+      "price": 120000,
+      "applicableTo": ["sliding"]
+    },
+    "lockMortise": {
+      "code": "XF55-L01",
+      "name": "Khóa âm",
+      "type": "lock",
+      "unit": "set",
+      "price": 350000,
+      "applicableTo": ["hinged-single", "hinged-double"]
+    },
+    "lockCremon": {
+      "code": "XF55-L02",
+      "name": "Khóa cremon",
+      "type": "lock",
+      "unit": "set",
+      "price": 280000,
+      "applicableTo": ["hinged-double"]
+    },
+    "sealWool": {
+      "code": "XF55-SE01",
+      "name": "Ron lông",
+      "type": "seal",
+      "unit": "m",
+      "price": 8000,
+      "applicableTo": ["hinged-single", "hinged-double", "sliding", "fixed"]
+    },
+    "sealRubber": {
+      "code": "XF55-SE02",
+      "name": "Ron cao su EPDM",
+      "type": "seal",
+      "unit": "m",
+      "price": 15000,
+      "applicableTo": ["hinged-single", "hinged-double", "sliding", "fixed"]
+    },
+    "cornerBracket": {
+      "code": "XF55-C01",
+      "name": "Ke góc",
+      "type": "corner",
+      "unit": "pcs",
+      "price": 12000,
+      "applicableTo": ["hinged-single", "hinged-double", "sliding", "fixed"]
+    },
+    "screwSet": {
+      "code": "XF55-SC01",
+      "name": "Bộ vít lắp đặt",
+      "type": "screw",
+      "unit": "set",
+      "price": 25000,
+      "applicableTo": ["hinged-single", "hinged-double", "sliding", "fixed"]
+    }
+  },
+
+  "glass": {
+    "minThickness": 5,
+    "maxThickness": 24,
+    "supportedTypes": [
+      "clear",
+      "tinted",
+      "reflective",
+      "laminated",
+      "tempered",
+      "insulated"
+    ],
+    "defaultThickness": 8,
+    "defaultType": "tempered"
+  },
+
+  "constraints": {
+    "minWidth": 400,
+    "maxWidth": 1200,
+    "minHeight": 600,
+    "maxHeight": 2400,
+    "maxArea": 2.5,
+    "maxWeight": 80
+  },
+
+  "formulas": {
+    "frameDeduction": 10,
+    "sashDeduction": 15,
+    "glassDeduction": 20,
+    "beadOverlap": 5
+  }
+}

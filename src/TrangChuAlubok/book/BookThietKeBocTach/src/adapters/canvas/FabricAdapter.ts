@@ -1,28 +1,19 @@
 /**
- * Fabric.js Canvas Adapter
- * Implements canvas rendering using Fabric.js library
+ * FabricAdapter.ts
+ *
+ * Fabric.js Canvas Adapter — Thin facade (STEP-5.11)
+ *
+ * Delegates to extracted modules:
+ * - FabricEntityFactory.ts: Entity → Fabric object factories
+ * - FabricPrimitiveDrawer.ts: Standalone primitive drawing API
+ * - FabricOverlayManager.ts: Transient UI overlays (selection, handles, snap, etc.)
+ * - FabricGridRenderer.ts: Grid rendering and configuration
+ *
+ * Keeps: Lifecycle, viewport, entity CRUD, layers, queries, export.
  */
 
 import * as fabric from "fabric";
 import { Vec2 } from "../../core/geometry/Vec2";
-import { EntityType } from "../../core/entities/Entity.types";
-import { LineEntity } from "../../core/entities/Line";
-import { RectEntity } from "../../core/entities/Rect";
-import { CircleEntity } from "../../core/entities/Circle";
-import { ArcEntity } from "../../core/entities/Arc";
-import { PolylineEntity } from "../../core/entities/Polyline";
-import { TextEntity } from "../../core/entities/Text";
-import { DimensionEntity } from "../../core/entities/Dimension";
-
-// Entity union type for this adapter
-type Entity =
-  | LineEntity
-  | RectEntity
-  | CircleEntity
-  | ArcEntity
-  | PolylineEntity
-  | TextEntity
-  | DimensionEntity;
 import {
   BaseCanvasAdapter,
   RenderOptions,
@@ -31,73 +22,73 @@ import {
   TextStyle,
 } from "./CanvasAdapter";
 
-// ===== Default Styles =====
-const DEFAULT_STROKE: StrokeStyle = {
-  color: "#ffffff",
-  width: 1,
-  lineCap: "round",
-  lineJoin: "round",
-  opacity: 1,
-};
-
-const DEFAULT_FILL = {
-  color: "transparent",
-  opacity: 0,
-};
-
-const DEFAULT_TEXT_STYLE: TextStyle = {
-  fontFamily: "Arial",
-  fontSize: 12,
-  fontWeight: "normal",
-  fontStyle: "normal",
-  color: "#ffffff",
-  textAlign: "left",
-};
-
-// ===== Grid Configuration =====
-interface GridConfig {
-  spacing: number;
-  majorEvery: number;
-  minorStyle: StrokeStyle;
-  majorStyle: StrokeStyle;
-  visible: boolean;
-}
+// Extracted modules
+import {
+  createFabricObject,
+  createRenderedObject,
+  type Entity,
+} from "./FabricEntityFactory";
+import {
+  drawLine as _drawLine,
+  drawRect as _drawRect,
+  drawCircle as _drawCircle,
+  drawArc as _drawArc,
+  drawPolyline as _drawPolyline,
+  drawText as _drawText,
+  drawPath as _drawPath,
+} from "./FabricPrimitiveDrawer";
+import {
+  type OverlayState,
+  createOverlayState,
+  showSelectionBox as _showSelectionBox,
+  hideSelectionBox as _hideSelectionBox,
+  highlightEntity as _highlightEntity,
+  unhighlightEntity as _unhighlightEntity,
+  showHandles as _showHandles,
+  hideHandles as _hideHandles,
+  showCrosshair as _showCrosshair,
+  hideCrosshair as _hideCrosshair,
+  showSnapIndicator as _showSnapIndicator,
+  hideSnapIndicator as _hideSnapIndicator,
+  drawPreview as _drawPreview,
+  clearPreview as _clearPreview,
+  drawRubberBand as _drawRubberBand,
+  clearRubberBand as _clearRubberBand,
+} from "./FabricOverlayManager";
+import {
+  type GridState,
+  createGridState,
+  showGrid as _showGrid,
+  hideGrid as _hideGrid,
+  setGridStyle as _setGridStyle,
+  updateGrid as _updateGrid,
+} from "./FabricGridRenderer";
 
 // ===== FabricAdapter Implementation =====
 export class FabricAdapter extends BaseCanvasAdapter {
   private canvas: fabric.Canvas | null = null;
   private entityMap: Map<string, fabric.FabricObject> = new Map();
-  private gridGroup: fabric.Group | null = null;
-  private gridConfig: GridConfig = {
-    spacing: 10,
-    majorEvery: 10,
-    minorStyle: { color: "#333333", width: 0.5 },
-    majorStyle: { color: "#555555", width: 1 },
-    visible: false,
-  };
-
-  private previewObjects: fabric.FabricObject[] = [];
-  private selectionBox: fabric.Rect | null = null;
-  private crosshairLines: [fabric.Line, fabric.Line] | null = null;
-  private rubberBandLine: fabric.Line | null = null;
-  private snapIndicator: fabric.Group | null = null;
-  private handleGroups: Map<string, fabric.Group> = new Map();
   private layerGroups: Map<string, fabric.Group> = new Map();
   protected override panOffset = new Vec2(0, 0);
 
-  // === Initialization ===
+  // Extracted state
+  private overlayState: OverlayState = createOverlayState();
+  private gridState: GridState = createGridState();
+
+  // ============================================
+  // LIFECYCLE
+  // ============================================
+
   initialize(container: HTMLElement): void {
     this.container = container;
     this.width = container.clientWidth;
     this.height = container.clientHeight;
 
-    // Create canvas element
     const canvasElement = document.createElement("canvas");
     canvasElement.width = this.width;
     canvasElement.height = this.height;
     container.appendChild(canvasElement);
 
-    // Initialize Fabric.js canvas
     this.canvas = new fabric.Canvas(canvasElement, {
       width: this.width,
       height: this.height,
@@ -110,10 +101,7 @@ export class FabricAdapter extends BaseCanvasAdapter {
       fireMiddleClick: true,
     });
 
-    // Disable default Fabric.js selection for CAD control
     this.canvas.selection = false;
-
-    // Set up event listeners
     this.setupEventListeners();
   }
 
@@ -124,7 +112,7 @@ export class FabricAdapter extends BaseCanvasAdapter {
     }
     this.entityMap.clear();
     this.layerGroups.clear();
-    this.handleGroups.clear();
+    this.overlayState.handleGroups.clear();
     this.container = null;
   }
 
@@ -139,10 +127,13 @@ export class FabricAdapter extends BaseCanvasAdapter {
     }
   }
 
+  // ============================================
+  // EVENT LISTENERS
+  // ============================================
+
   private setupEventListeners(): void {
     if (!this.canvas) return;
 
-    // Mouse events
     this.canvas.on("mouse:down", (e) => {
       const pointer = this.canvas!.getViewportPoint(e.e);
       const screenPos = new Vec2(pointer.x, pointer.y);
@@ -209,9 +200,8 @@ export class FabricAdapter extends BaseCanvasAdapter {
       });
     });
 
-    // Keyboard events (on container)
     if (this.container) {
-      this.container.tabIndex = 0; // Make focusable
+      this.container.tabIndex = 0;
 
       this.container.addEventListener("keydown", (e) => {
         this.emitKeyDown({
@@ -235,22 +225,29 @@ export class FabricAdapter extends BaseCanvasAdapter {
     }
   }
 
-  // === Viewport ===
+  // ============================================
+  // VIEWPORT
+  // ============================================
+
   protected updateViewport(): void {
     if (!this.canvas) return;
 
-    // Reset and apply viewport transform
     const vpt = this.canvas.viewportTransform;
     if (vpt) {
-      vpt[0] = this.viewport.zoom; // scaleX
-      vpt[3] = -this.viewport.zoom; // scaleY (flipped for CAD coordinate system)
-      vpt[4] = this.width / 2 + this.panOffset.x; // translateX
-      vpt[5] = this.height / 2 + this.panOffset.y; // translateY
+      vpt[0] = this.viewport.zoom;
+      vpt[3] = -this.viewport.zoom;
+      vpt[4] = this.width / 2 + this.panOffset.x;
+      vpt[5] = this.height / 2 + this.panOffset.y;
     }
 
-    // Update grid if visible
-    if (this.gridConfig.visible) {
-      this.updateGrid();
+    if (this.gridState.config.visible) {
+      _updateGrid(
+        this.canvas,
+        this.gridState,
+        this.screenToWorld.bind(this),
+        this.width,
+        this.height,
+      );
     }
 
     this.canvas.requestRenderAll();
@@ -262,12 +259,13 @@ export class FabricAdapter extends BaseCanvasAdapter {
     const objects = this.canvas
       .getObjects()
       .filter(
-        (obj) => obj !== this.gridGroup && !this.previewObjects.includes(obj)
+        (obj) =>
+          obj !== this.gridState.group &&
+          !this.overlayState.previewObjects.includes(obj),
       );
 
     if (objects.length === 0) return;
 
-    // Calculate bounding box of all entities
     let minX = Infinity,
       minY = Infinity;
     let maxX = -Infinity,
@@ -301,9 +299,12 @@ export class FabricAdapter extends BaseCanvasAdapter {
     this.updateViewport();
   }
 
-  // === Entity Rendering ===
+  // ============================================
+  // ENTITY CRUD — delegates to FabricEntityFactory
+  // ============================================
+
   renderEntity(entity: Entity, options?: RenderOptions): RenderedObject {
-    const fabricObj = this.createFabricObject(entity, options);
+    const fabricObj = createFabricObject(entity, options);
 
     if (fabricObj && this.canvas) {
       fabricObj.set("data", { entityId: entity.id });
@@ -312,26 +313,24 @@ export class FabricAdapter extends BaseCanvasAdapter {
       this.canvas.requestRenderAll();
     }
 
-    return this.createRenderedObject(entity.id, entity, fabricObj);
+    return createRenderedObject(entity.id, entity, fabricObj);
   }
 
   renderEntities(
     entities: Entity[],
-    options?: RenderOptions
+    options?: RenderOptions,
   ): RenderedObject[] {
     const results: RenderedObject[] = [];
-
     for (const entity of entities) {
       results.push(this.renderEntity(entity, options));
     }
-
     return results;
   }
 
   updateEntity(
     entityId: string,
     entity: Entity,
-    options?: RenderOptions
+    options?: RenderOptions,
   ): void {
     const existing = this.entityMap.get(entityId);
 
@@ -364,412 +363,32 @@ export class FabricAdapter extends BaseCanvasAdapter {
     this.canvas.requestRenderAll();
   }
 
-  private createFabricObject(
-    entity: Entity,
-    options?: RenderOptions
-  ): fabric.FabricObject | null {
-    const entityColor =
-      "style" in entity && entity.style?.strokeColor
-        ? entity.style.strokeColor
-        : "#ffffff";
-    const stroke = options?.stroke ?? { ...DEFAULT_STROKE, color: entityColor };
-    const fill = options?.fill ?? DEFAULT_FILL;
+  // ============================================
+  // PRIMITIVE DRAWING — delegates to FabricPrimitiveDrawer
+  // ============================================
 
-    switch (entity.type) {
-      case EntityType.LINE:
-        return this.createLineObject(entity as LineEntity, stroke);
-
-      case EntityType.RECT:
-        return this.createRectObject(entity as RectEntity, stroke, fill);
-
-      case EntityType.CIRCLE:
-        return this.createCircleObject(entity as CircleEntity, stroke, fill);
-
-      case EntityType.ARC:
-        return this.createArcObject(entity as ArcEntity, stroke);
-
-      case EntityType.POLYLINE:
-        return this.createPolylineObject(
-          entity as PolylineEntity,
-          stroke,
-          fill
-        );
-
-      case EntityType.TEXT:
-        return this.createTextObject(entity as TextEntity, options?.text);
-
-      case EntityType.DIMENSION:
-        return this.createDimensionObject(
-          entity as DimensionEntity,
-          stroke,
-          options?.text
-        );
-
-      default:
-        console.warn(
-          `Unknown entity type: ${(entity as { type: string }).type}`
-        );
-        return null;
-    }
-  }
-
-  private createLineObject(
-    entity: LineEntity,
-    stroke: StrokeStyle
-  ): fabric.Line {
-    return new fabric.Line(
-      [entity.start.x, entity.start.y, entity.end.x, entity.end.y],
-      {
-        stroke: stroke.color,
-        strokeWidth: stroke.width,
-        strokeLineCap: stroke.lineCap,
-        strokeLineJoin: stroke.lineJoin,
-        strokeDashArray: stroke.dashArray,
-        selectable: false,
-        evented: false,
-      }
-    );
-  }
-
-  private createRectObject(
-    entity: RectEntity,
-    stroke: StrokeStyle,
-    fill: { color: string; opacity?: number }
-  ): fabric.Rect {
-    return new fabric.Rect({
-      left: entity.origin.x,
-      top: entity.origin.y,
-      width: entity.width,
-      height: entity.height,
-      angle: (entity.rotation * 180) / Math.PI,
-      stroke: stroke.color,
-      strokeWidth: stroke.width,
-      fill: fill.color,
-      opacity: fill.opacity ?? 1,
-      selectable: false,
-      evented: false,
-    });
-  }
-
-  private createCircleObject(
-    entity: CircleEntity,
-    stroke: StrokeStyle,
-    fill: { color: string; opacity?: number }
-  ): fabric.Circle {
-    return new fabric.Circle({
-      left: entity.center.x - entity.radius,
-      top: entity.center.y - entity.radius,
-      radius: entity.radius,
-      stroke: stroke.color,
-      strokeWidth: stroke.width,
-      fill: fill.color,
-      opacity: fill.opacity ?? 1,
-      selectable: false,
-      evented: false,
-    });
-  }
-
-  private createArcObject(entity: ArcEntity, stroke: StrokeStyle): fabric.Path {
-    // Create SVG arc path
-    const { center, radius, startAngle, endAngle } = entity;
-
-    const startX = center.x + radius * Math.cos(startAngle);
-    const startY = center.y + radius * Math.sin(startAngle);
-    const endX = center.x + radius * Math.cos(endAngle);
-    const endY = center.y + radius * Math.sin(endAngle);
-
-    const largeArcFlag = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0;
-    const sweepFlag = endAngle > startAngle ? 1 : 0;
-
-    const pathData = `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} ${sweepFlag} ${endX} ${endY}`;
-
-    return new fabric.Path(pathData, {
-      stroke: stroke.color,
-      strokeWidth: stroke.width,
-      fill: "transparent",
-      selectable: false,
-      evented: false,
-    });
-  }
-
-  private createPolylineObject(
-    entity: PolylineEntity,
-    stroke: StrokeStyle,
-    fill: { color: string; opacity?: number }
-  ): fabric.Polyline | fabric.Polygon {
-    const points = entity.points.map((p) => ({ x: p.x, y: p.y }));
-
-    if (entity.closed) {
-      return new fabric.Polygon(points, {
-        stroke: stroke.color,
-        strokeWidth: stroke.width,
-        fill: fill.color,
-        opacity: fill.opacity ?? 1,
-        selectable: false,
-        evented: false,
-      });
-    } else {
-      return new fabric.Polyline(points, {
-        stroke: stroke.color,
-        strokeWidth: stroke.width,
-        fill: "transparent",
-        selectable: false,
-        evented: false,
-      });
-    }
-  }
-
-  private createTextObject(
-    entity: TextEntity,
-    textStyle?: TextStyle
-  ): fabric.Text {
-    const entityColor = entity.style?.strokeColor ?? "#ffffff";
-    const style = textStyle ?? { ...DEFAULT_TEXT_STYLE, color: entityColor };
-
-    return new fabric.Text(entity.text, {
-      left: entity.position.x,
-      top: entity.position.y,
-      fontSize: style.fontSize,
-      fontFamily: style.fontFamily,
-      fontWeight: style.fontWeight,
-      fontStyle: style.fontStyle,
-      fill: style.color,
-      textAlign: style.textAlign,
-      angle: (entity.rotation * 180) / Math.PI,
-      selectable: false,
-      evented: false,
-    });
-  }
-
-  private createDimensionObject(
-    entity: DimensionEntity,
-    stroke: StrokeStyle,
-    textStyle?: TextStyle
-  ): fabric.Group {
-    const { startPoint, endPoint, offset, value, prefix, suffix, dimStyle } =
-      entity;
-    const precision = dimStyle.precision;
-
-    // Calculate dimension line position
-    const direction = endPoint.sub(startPoint).normalize();
-    const perpendicular = new Vec2(-direction.y, direction.x);
-    const offsetVec = perpendicular.mul(offset);
-
-    const dimStart = startPoint.add(offsetVec);
-    const dimEnd = endPoint.add(offsetVec);
-    const midPoint = dimStart.add(dimEnd).mul(0.5);
-
-    // Create extension lines
-    const extLine1 = new fabric.Line(
-      [startPoint.x, startPoint.y, dimStart.x, dimStart.y],
-      { stroke: stroke.color, strokeWidth: stroke.width * 0.5 }
-    );
-
-    const extLine2 = new fabric.Line(
-      [endPoint.x, endPoint.y, dimEnd.x, dimEnd.y],
-      { stroke: stroke.color, strokeWidth: stroke.width * 0.5 }
-    );
-
-    // Create dimension line
-    const dimLine = new fabric.Line(
-      [dimStart.x, dimStart.y, dimEnd.x, dimEnd.y],
-      { stroke: stroke.color, strokeWidth: stroke.width }
-    );
-
-    // Create text
-    const displayValue =
-      value !== undefined ? value : startPoint.distanceTo(endPoint);
-    const text = `${prefix ?? ""}${displayValue.toFixed(precision ?? 2)}${
-      suffix ?? ""
-    }`;
-    const entityColor = entity.style?.strokeColor ?? "#ffffff";
-    const style = textStyle ?? { ...DEFAULT_TEXT_STYLE, color: entityColor };
-
-    const dimText = new fabric.Text(text, {
-      left: midPoint.x,
-      top: midPoint.y - 10,
-      fontSize: style.fontSize,
-      fontFamily: style.fontFamily,
-      fill: style.color,
-      textAlign: "center",
-      originX: "center",
-      originY: "bottom",
-    });
-
-    // Create arrow heads
-    const arrowSize = 8;
-    const arrow1 = this.createArrowHead(
-      dimStart,
-      direction,
-      arrowSize,
-      stroke.color
-    );
-    const arrow2 = this.createArrowHead(
-      dimEnd,
-      direction.mul(-1),
-      arrowSize,
-      stroke.color
-    );
-
-    return new fabric.Group(
-      [extLine1, extLine2, dimLine, arrow1, arrow2, dimText],
-      {
-        selectable: false,
-        evented: false,
-      }
-    );
-  }
-
-  private createArrowHead(
-    tip: Vec2,
-    direction: Vec2,
-    size: number,
-    color: string
-  ): fabric.Triangle {
-    const angle = (Math.atan2(direction.y, direction.x) * 180) / Math.PI;
-
-    return new fabric.Triangle({
-      left: tip.x,
-      top: tip.y,
-      width: size,
-      height: size * 0.6,
-      fill: color,
-      angle: angle + 90,
-      originX: "center",
-      originY: "center",
-    });
-  }
-
-  private createRenderedObject(
-    id: string,
-    entity: Entity,
-    fabricObj: fabric.FabricObject | null
-  ): RenderedObject {
-    void fabricObj; // Intentionally unused - kept for future use
-
-    // Use getBounds method if available, otherwise create a default bounding box
-    let bounds: {
-      min: { x: number; y: number };
-      max: { x: number; y: number };
-    };
-    if ("getBounds" in entity && typeof entity.getBounds === "function") {
-      bounds = entity.getBounds();
-    } else {
-      // Fallback: create empty bounds
-      bounds = { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } };
-    }
-
-    return {
-      id,
-      entityId: entity.id,
-      type: entity.type,
-      bounds: {
-        min: bounds.min,
-        max: bounds.max,
-      },
-    };
-  }
-
-  // === Primitive Drawing ===
   drawLine(start: Vec2, end: Vec2, style?: StrokeStyle): RenderedObject {
-    const stroke = style ?? DEFAULT_STROKE;
-    const line = new fabric.Line([start.x, start.y, end.x, end.y], {
-      stroke: stroke.color,
-      strokeWidth: stroke.width,
-      strokeLineCap: stroke.lineCap,
-      strokeLineJoin: stroke.lineJoin,
-      strokeDashArray: stroke.dashArray,
-      selectable: false,
-      evented: false,
-    });
-
-    const id = `line_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    if (this.canvas) {
-      this.canvas.add(line);
-      this.canvas.requestRenderAll();
-    }
-
-    return {
-      id,
-      type: "line",
-      bounds: { min: start, max: end },
-    };
+    if (!this.canvas) return { id: "", type: "line", bounds: { min: start, max: end } };
+    return _drawLine(this.canvas, start, end, style);
   }
 
   drawRect(
     position: Vec2,
     width: number,
     height: number,
-    style?: RenderOptions
+    style?: RenderOptions,
   ): RenderedObject {
-    const stroke = style?.stroke ?? DEFAULT_STROKE;
-    const fill = style?.fill ?? DEFAULT_FILL;
-
-    const rect = new fabric.Rect({
-      left: position.x,
-      top: position.y,
-      width,
-      height,
-      stroke: stroke.color,
-      strokeWidth: stroke.width,
-      fill: fill.color,
-      opacity: fill.opacity ?? 1,
-      selectable: false,
-      evented: false,
-    });
-
-    const id = `rect_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    if (this.canvas) {
-      this.canvas.add(rect);
-      this.canvas.requestRenderAll();
-    }
-
-    return {
-      id,
-      type: "rect",
-      bounds: {
-        min: position,
-        max: { x: position.x + width, y: position.y + height },
-      },
-    };
+    if (!this.canvas) return { id: "", type: "rect", bounds: { min: position, max: { x: position.x + width, y: position.y + height } } };
+    return _drawRect(this.canvas, position, width, height, style);
   }
 
   drawCircle(
     center: Vec2,
     radius: number,
-    style?: RenderOptions
+    style?: RenderOptions,
   ): RenderedObject {
-    const stroke = style?.stroke ?? DEFAULT_STROKE;
-    const fill = style?.fill ?? DEFAULT_FILL;
-
-    const circle = new fabric.Circle({
-      left: center.x - radius,
-      top: center.y - radius,
-      radius,
-      stroke: stroke.color,
-      strokeWidth: stroke.width,
-      fill: fill.color,
-      opacity: fill.opacity ?? 1,
-      selectable: false,
-      evented: false,
-    });
-
-    const id = `circle_${Date.now()}_${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-    if (this.canvas) {
-      this.canvas.add(circle);
-      this.canvas.requestRenderAll();
-    }
-
-    return {
-      id,
-      type: "circle",
-      bounds: {
-        min: { x: center.x - radius, y: center.y - radius },
-        max: { x: center.x + radius, y: center.y + radius },
-      },
-    };
+    if (!this.canvas) return { id: "", type: "circle", bounds: { min: { x: center.x - radius, y: center.y - radius }, max: { x: center.x + radius, y: center.y + radius } } };
+    return _drawCircle(this.canvas, center, radius, style);
   }
 
   drawArc(
@@ -777,521 +396,145 @@ export class FabricAdapter extends BaseCanvasAdapter {
     radius: number,
     startAngle: number,
     endAngle: number,
-    style?: StrokeStyle
+    style?: StrokeStyle,
   ): RenderedObject {
-    const stroke = style ?? DEFAULT_STROKE;
-
-    const startX = center.x + radius * Math.cos(startAngle);
-    const startY = center.y + radius * Math.sin(startAngle);
-    const endX = center.x + radius * Math.cos(endAngle);
-    const endY = center.y + radius * Math.sin(endAngle);
-
-    const largeArcFlag = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0;
-    const sweepFlag = endAngle > startAngle ? 1 : 0;
-
-    const pathData = `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} ${sweepFlag} ${endX} ${endY}`;
-
-    const path = new fabric.Path(pathData, {
-      stroke: stroke.color,
-      strokeWidth: stroke.width,
-      fill: "transparent",
-      selectable: false,
-      evented: false,
-    });
-
-    const id = `arc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    if (this.canvas) {
-      this.canvas.add(path);
-      this.canvas.requestRenderAll();
-    }
-
-    return {
-      id,
-      type: "arc",
-      bounds: {
-        min: { x: center.x - radius, y: center.y - radius },
-        max: { x: center.x + radius, y: center.y + radius },
-      },
-    };
+    if (!this.canvas) return { id: "", type: "arc", bounds: { min: { x: center.x - radius, y: center.y - radius }, max: { x: center.x + radius, y: center.y + radius } } };
+    return _drawArc(this.canvas, center, radius, startAngle, endAngle, style);
   }
 
   drawPolyline(
     points: Vec2[],
     closed: boolean,
-    style?: RenderOptions
+    style?: RenderOptions,
   ): RenderedObject {
-    const stroke = style?.stroke ?? DEFAULT_STROKE;
-    const fill = style?.fill ?? DEFAULT_FILL;
-    const fabricPoints = points.map((p) => ({ x: p.x, y: p.y }));
-
-    const poly = closed
-      ? new fabric.Polygon(fabricPoints, {
-          stroke: stroke.color,
-          strokeWidth: stroke.width,
-          fill: fill.color,
-          opacity: fill.opacity ?? 1,
-          selectable: false,
-          evented: false,
-        })
-      : new fabric.Polyline(fabricPoints, {
-          stroke: stroke.color,
-          strokeWidth: stroke.width,
-          fill: "transparent",
-          selectable: false,
-          evented: false,
-        });
-
-    const id = `polyline_${Date.now()}_${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-    if (this.canvas) {
-      this.canvas.add(poly);
-      this.canvas.requestRenderAll();
-    }
-
-    // Calculate bounds
-    let minX = Infinity,
-      minY = Infinity;
-    let maxX = -Infinity,
-      maxY = -Infinity;
-    for (const p of points) {
-      minX = Math.min(minX, p.x);
-      minY = Math.min(minY, p.y);
-      maxX = Math.max(maxX, p.x);
-      maxY = Math.max(maxY, p.y);
-    }
-
-    return {
-      id,
-      type: closed ? "polygon" : "polyline",
-      bounds: { min: { x: minX, y: minY }, max: { x: maxX, y: maxY } },
-    };
+    if (!this.canvas) return { id: "", type: "polyline", bounds: { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } } };
+    return _drawPolyline(this.canvas, points, closed, style);
   }
 
   drawText(position: Vec2, text: string, style?: TextStyle): RenderedObject {
-    const textStyle = style ?? DEFAULT_TEXT_STYLE;
-
-    const textObj = new fabric.Text(text, {
-      left: position.x,
-      top: position.y,
-      fontSize: textStyle.fontSize,
-      fontFamily: textStyle.fontFamily,
-      fontWeight: textStyle.fontWeight,
-      fontStyle: textStyle.fontStyle,
-      fill: textStyle.color,
-      textAlign: textStyle.textAlign,
-      selectable: false,
-      evented: false,
-    });
-
-    const id = `text_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    if (this.canvas) {
-      this.canvas.add(textObj);
-      this.canvas.requestRenderAll();
-    }
-
-    const bounds = textObj.getBoundingRect();
-    return {
-      id,
-      type: "text",
-      bounds: {
-        min: { x: bounds.left, y: bounds.top },
-        max: { x: bounds.left + bounds.width, y: bounds.top + bounds.height },
-      },
-    };
+    if (!this.canvas) return { id: "", type: "text", bounds: { min: position, max: position } };
+    return _drawText(this.canvas, position, text, style);
   }
 
   drawPath(pathData: string, style?: RenderOptions): RenderedObject {
-    const stroke = style?.stroke ?? DEFAULT_STROKE;
-    const fill = style?.fill ?? DEFAULT_FILL;
-
-    const path = new fabric.Path(pathData, {
-      stroke: stroke.color,
-      strokeWidth: stroke.width,
-      fill: fill.color,
-      opacity: fill.opacity ?? 1,
-      selectable: false,
-      evented: false,
-    });
-
-    const id = `path_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    if (this.canvas) {
-      this.canvas.add(path);
-      this.canvas.requestRenderAll();
-    }
-
-    const bounds = path.getBoundingRect();
-    return {
-      id,
-      type: "path",
-      bounds: {
-        min: { x: bounds.left, y: bounds.top },
-        max: { x: bounds.left + bounds.width, y: bounds.top + bounds.height },
-      },
-    };
+    if (!this.canvas) return { id: "", type: "path", bounds: { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } } };
+    return _drawPath(this.canvas, pathData, style);
   }
 
-  // === Grid ===
+  // ============================================
+  // GRID — delegates to FabricGridRenderer
+  // ============================================
+
   showGrid(spacing: number, majorEvery = 10): void {
-    this.gridConfig.spacing = spacing;
-    this.gridConfig.majorEvery = majorEvery;
-    this.gridConfig.visible = true;
-    this.updateGrid();
+    if (!this.canvas) return;
+    _showGrid(
+      this.canvas,
+      this.gridState,
+      spacing,
+      majorEvery,
+      this.screenToWorld.bind(this),
+      this.width,
+      this.height,
+    );
   }
 
   hideGrid(): void {
-    this.gridConfig.visible = false;
-    if (this.gridGroup && this.canvas) {
-      this.canvas.remove(this.gridGroup);
-      this.gridGroup = null;
-      this.canvas.requestRenderAll();
-    }
+    if (!this.canvas) return;
+    _hideGrid(this.canvas, this.gridState);
   }
 
   setGridStyle(minor?: StrokeStyle, major?: StrokeStyle): void {
-    if (minor) this.gridConfig.minorStyle = minor;
-    if (major) this.gridConfig.majorStyle = major;
-    if (this.gridConfig.visible) {
-      this.updateGrid();
-    }
-  }
-
-  private updateGrid(): void {
-    if (!this.canvas || !this.gridConfig.visible) return;
-
-    // Remove existing grid
-    if (this.gridGroup) {
-      this.canvas.remove(this.gridGroup);
-    }
-
-    const { spacing, majorEvery, minorStyle, majorStyle } = this.gridConfig;
-    const lines: fabric.Line[] = [];
-
-    // Calculate visible area in world coordinates
-    const topLeft = this.screenToWorld(new Vec2(0, 0));
-    const bottomRight = this.screenToWorld(new Vec2(this.width, this.height));
-
-    const startX = Math.floor(topLeft.x / spacing) * spacing;
-    const endX = Math.ceil(bottomRight.x / spacing) * spacing;
-    const startY = Math.floor(bottomRight.y / spacing) * spacing;
-    const endY = Math.ceil(topLeft.y / spacing) * spacing;
-
-    // Vertical lines
-    for (let x = startX; x <= endX; x += spacing) {
-      const isMajor = x % (spacing * majorEvery) === 0;
-      const style = isMajor ? majorStyle : minorStyle;
-
-      lines.push(
-        new fabric.Line([x, startY, x, endY], {
-          stroke: style.color,
-          strokeWidth: style.width,
-        })
-      );
-    }
-
-    // Horizontal lines
-    for (let y = startY; y <= endY; y += spacing) {
-      const isMajor = y % (spacing * majorEvery) === 0;
-      const style = isMajor ? majorStyle : minorStyle;
-
-      lines.push(
-        new fabric.Line([startX, y, endX, y], {
-          stroke: style.color,
-          strokeWidth: style.width,
-        })
-      );
-    }
-
-    this.gridGroup = new fabric.Group(lines, {
-      selectable: false,
-      evented: false,
-    });
-
-    this.canvas.add(this.gridGroup);
-    this.canvas.sendObjectToBack(this.gridGroup);
-    this.canvas.requestRenderAll();
-  }
-
-  // === Selection Visual ===
-  showSelectionBox(start: Vec2, end: Vec2): void {
-    this.hideSelectionBox();
-
     if (!this.canvas) return;
+    _setGridStyle(
+      this.canvas,
+      this.gridState,
+      minor,
+      major,
+      this.screenToWorld.bind(this),
+      this.width,
+      this.height,
+    );
+  }
 
-    const left = Math.min(start.x, end.x);
-    const top = Math.min(start.y, end.y);
-    const width = Math.abs(end.x - start.x);
-    const height = Math.abs(end.y - start.y);
+  // ============================================
+  // OVERLAYS — delegates to FabricOverlayManager
+  // ============================================
 
-    // Crossing selection (right to left) = dashed, Window selection (left to right) = solid
-    const isCrossing = end.x < start.x;
-
-    this.selectionBox = new fabric.Rect({
-      left,
-      top,
-      width,
-      height,
-      fill: isCrossing ? "rgba(0, 255, 0, 0.1)" : "rgba(0, 128, 255, 0.1)",
-      stroke: isCrossing ? "#00ff00" : "#0080ff",
-      strokeWidth: 1,
-      strokeDashArray: isCrossing ? [5, 5] : undefined,
-      selectable: false,
-      evented: false,
-    });
-
-    this.canvas.add(this.selectionBox);
-    this.canvas.requestRenderAll();
+  showSelectionBox(start: Vec2, end: Vec2): void {
+    if (!this.canvas) return;
+    _showSelectionBox(this.canvas, this.overlayState, start, end);
   }
 
   hideSelectionBox(): void {
-    if (this.selectionBox && this.canvas) {
-      this.canvas.remove(this.selectionBox);
-      this.selectionBox = null;
-      this.canvas.requestRenderAll();
-    }
+    if (!this.canvas) return;
+    _hideSelectionBox(this.canvas, this.overlayState);
   }
 
   highlightEntity(entityId: string, color = "#ffff00"): void {
-    const obj = this.entityMap.get(entityId);
-    if (obj) {
-      obj.set("stroke", color);
-      obj.set("strokeWidth", (obj.get("strokeWidth") ?? 1) + 1);
-      this.canvas?.requestRenderAll();
-    }
+    if (!this.canvas) return;
+    _highlightEntity(this.canvas, this.entityMap, entityId, color);
   }
 
   unhighlightEntity(entityId: string): void {
-    // Re-render entity with original style
-    const obj = this.entityMap.get(entityId);
-    if (obj) {
-      // Reset to original - would need to store original values
-      obj.set("strokeWidth", (obj.get("strokeWidth") ?? 2) - 1);
-      this.canvas?.requestRenderAll();
-    }
+    if (!this.canvas) return;
+    _unhighlightEntity(this.canvas, this.entityMap, entityId);
   }
 
   showHandles(entityId: string, handles: Vec2[]): void {
-    this.hideHandles(entityId);
-
     if (!this.canvas) return;
-
-    const handleObjects: fabric.Circle[] = handles.map(
-      (pos) =>
-        new fabric.Circle({
-          left: pos.x - 4,
-          top: pos.y - 4,
-          radius: 4,
-          fill: "#ffffff",
-          stroke: "#0080ff",
-          strokeWidth: 1,
-          selectable: false,
-          evented: false,
-        })
-    );
-
-    const group = new fabric.Group(handleObjects, {
-      selectable: false,
-      evented: false,
-    });
-
-    this.handleGroups.set(entityId, group);
-    this.canvas.add(group);
-    this.canvas.requestRenderAll();
+    _showHandles(this.canvas, this.overlayState, entityId, handles);
   }
 
   hideHandles(entityId: string): void {
-    const group = this.handleGroups.get(entityId);
-    if (group && this.canvas) {
-      this.canvas.remove(group);
-      this.handleGroups.delete(entityId);
-      this.canvas.requestRenderAll();
-    }
+    if (!this.canvas) return;
+    _hideHandles(this.canvas, this.overlayState, entityId);
   }
 
-  // === Crosshair / Cursor ===
   showCrosshair(position: Vec2): void {
-    this.hideCrosshair();
-
     if (!this.canvas) return;
-
     const screenPos = this.worldToScreen(position);
-
-    const hLine = new fabric.Line([0, screenPos.y, this.width, screenPos.y], {
-      stroke: "#888888",
-      strokeWidth: 0.5,
-      strokeDashArray: [5, 5],
-    });
-
-    const vLine = new fabric.Line([screenPos.x, 0, screenPos.x, this.height], {
-      stroke: "#888888",
-      strokeWidth: 0.5,
-      strokeDashArray: [5, 5],
-    });
-
-    this.crosshairLines = [hLine, vLine];
-    this.canvas.add(hLine, vLine);
-    this.canvas.requestRenderAll();
+    _showCrosshair(this.canvas, this.overlayState, screenPos, this.width, this.height);
   }
 
   hideCrosshair(): void {
-    if (this.crosshairLines && this.canvas) {
-      this.canvas.remove(this.crosshairLines[0], this.crosshairLines[1]);
-      this.crosshairLines = null;
-      this.canvas.requestRenderAll();
-    }
+    if (!this.canvas) return;
+    _hideCrosshair(this.canvas, this.overlayState);
   }
 
-  // === Snap Indicators ===
   showSnapIndicator(position: Vec2, type: string): void {
-    this.hideSnapIndicator();
-
     if (!this.canvas) return;
-
-    const size = 8;
-    let indicator: fabric.FabricObject;
-
-    switch (type) {
-      case "ENDPOINT":
-        indicator = new fabric.Rect({
-          left: position.x - size / 2,
-          top: position.y - size / 2,
-          width: size,
-          height: size,
-          fill: "transparent",
-          stroke: "#00ff00",
-          strokeWidth: 2,
-        });
-        break;
-
-      case "MIDPOINT":
-        indicator = new fabric.Triangle({
-          left: position.x,
-          top: position.y - size / 2,
-          width: size,
-          height: size,
-          fill: "transparent",
-          stroke: "#00ff00",
-          strokeWidth: 2,
-          originX: "center",
-        });
-        break;
-
-      case "CENTER":
-        indicator = new fabric.Circle({
-          left: position.x - size / 2,
-          top: position.y - size / 2,
-          radius: size / 2,
-          fill: "transparent",
-          stroke: "#00ff00",
-          strokeWidth: 2,
-        });
-        break;
-
-      case "INTERSECTION":
-        const line1 = new fabric.Line(
-          [
-            position.x - size,
-            position.y - size,
-            position.x + size,
-            position.y + size,
-          ],
-          { stroke: "#00ff00", strokeWidth: 2 }
-        );
-        const line2 = new fabric.Line(
-          [
-            position.x + size,
-            position.y - size,
-            position.x - size,
-            position.y + size,
-          ],
-          { stroke: "#00ff00", strokeWidth: 2 }
-        );
-        indicator = new fabric.Group([line1, line2]);
-        break;
-
-      default:
-        indicator = new fabric.Circle({
-          left: position.x - 3,
-          top: position.y - 3,
-          radius: 3,
-          fill: "#00ff00",
-        });
-    }
-
-    this.snapIndicator = new fabric.Group([indicator], {
-      selectable: false,
-      evented: false,
-    });
-
-    this.canvas.add(this.snapIndicator);
-    this.canvas.requestRenderAll();
+    _showSnapIndicator(this.canvas, this.overlayState, position, type);
   }
 
   hideSnapIndicator(): void {
-    if (this.snapIndicator && this.canvas) {
-      this.canvas.remove(this.snapIndicator);
-      this.snapIndicator = null;
-      this.canvas.requestRenderAll();
-    }
+    if (!this.canvas) return;
+    _hideSnapIndicator(this.canvas, this.overlayState);
   }
 
-  // === Temporary / Preview ===
   drawPreview(entity: Entity, options?: RenderOptions): void {
-    this.clearPreview();
-
-    const previewStyle: RenderOptions = {
-      ...options,
-      stroke: {
-        ...(options?.stroke ?? DEFAULT_STROKE),
-        color: options?.stroke?.color ?? "#00ff00",
-        dashArray: [5, 5],
-      },
-    };
-
-    const fabricObj = this.createFabricObject(entity, previewStyle);
-    if (fabricObj && this.canvas) {
-      this.previewObjects.push(fabricObj);
-      this.canvas.add(fabricObj);
-      this.canvas.requestRenderAll();
-    }
+    if (!this.canvas) return;
+    _drawPreview(this.canvas, this.overlayState, entity, options);
   }
 
   clearPreview(): void {
     if (!this.canvas) return;
-
-    for (const obj of this.previewObjects) {
-      this.canvas.remove(obj);
-    }
-    this.previewObjects = [];
-    this.canvas.requestRenderAll();
+    _clearPreview(this.canvas, this.overlayState);
   }
 
   drawRubberBand(start: Vec2, end: Vec2): void {
-    this.clearRubberBand();
-
     if (!this.canvas) return;
-
-    this.rubberBandLine = new fabric.Line([start.x, start.y, end.x, end.y], {
-      stroke: "#00ff00",
-      strokeWidth: 1,
-      strokeDashArray: [5, 5],
-      selectable: false,
-      evented: false,
-    });
-
-    this.canvas.add(this.rubberBandLine);
-    this.canvas.requestRenderAll();
+    _drawRubberBand(this.canvas, this.overlayState, start, end);
   }
 
   clearRubberBand(): void {
-    if (this.rubberBandLine && this.canvas) {
-      this.canvas.remove(this.rubberBandLine);
-      this.rubberBandLine = null;
-      this.canvas.requestRenderAll();
-    }
+    if (!this.canvas) return;
+    _clearRubberBand(this.canvas, this.overlayState);
   }
 
-  // === Layers ===
+  // ============================================
+  // LAYERS
+  // ============================================
+
   setLayerVisibility(layerId: string, visible: boolean): void {
     const group = this.layerGroups.get(layerId);
     if (group) {
@@ -1308,7 +551,10 @@ export class FabricAdapter extends BaseCanvasAdapter {
     }
   }
 
-  // === Query ===
+  // ============================================
+  // SPATIAL QUERIES
+  // ============================================
+
   getObjectAtPoint(point: Vec2): RenderedObject | null {
     if (!this.canvas) return null;
 
@@ -1316,7 +562,11 @@ export class FabricAdapter extends BaseCanvasAdapter {
 
     for (let i = objects.length - 1; i >= 0; i--) {
       const obj = objects[i];
-      if (obj === this.gridGroup || this.previewObjects.includes(obj)) continue;
+      if (
+        obj === this.gridState.group ||
+        this.overlayState.previewObjects.includes(obj)
+      )
+        continue;
 
       const bounds = obj.getBoundingRect();
       if (
@@ -1351,11 +601,14 @@ export class FabricAdapter extends BaseCanvasAdapter {
     const objects = this.canvas.getObjects();
 
     for (const obj of objects) {
-      if (obj === this.gridGroup || this.previewObjects.includes(obj)) continue;
+      if (
+        obj === this.gridState.group ||
+        this.overlayState.previewObjects.includes(obj)
+      )
+        continue;
 
       const bounds = obj.getBoundingRect();
 
-      // Check if object is within rect
       if (
         bounds.left >= rect.min.x &&
         bounds.left + bounds.width <= rect.max.x &&
@@ -1400,7 +653,10 @@ export class FabricAdapter extends BaseCanvasAdapter {
     return results;
   }
 
-  // === Export ===
+  // ============================================
+  // EXPORT
+  // ============================================
+
   toDataURL(format: "png" | "jpeg" | "webp" = "png", quality = 1): string {
     if (!this.canvas) return "";
 
@@ -1421,7 +677,10 @@ export class FabricAdapter extends BaseCanvasAdapter {
     return this.canvas.toJSON();
   }
 
-  // === Additional Utility Methods ===
+  // ============================================
+  // UTILITY
+  // ============================================
+
   getCanvas(): fabric.Canvas | null {
     return this.canvas;
   }

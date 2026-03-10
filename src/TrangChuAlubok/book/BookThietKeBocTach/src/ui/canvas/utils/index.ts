@@ -13,6 +13,7 @@ export {
   circleCircleIntersection,
   snapToGridPoint,
   applyOrtho,
+  applyOrthoAngle,
 } from "./geometry";
 export type { Point } from "./geometry";
 
@@ -26,7 +27,7 @@ export {
   scaleEntity,
   editTextEntity,
 } from "./entityUtils";
-export type { CadEntity } from "./entityUtils";
+export type { CadEntity, TextHitTestContext } from "./entityUtils";
 
 // Dimension utilities
 export {
@@ -115,6 +116,27 @@ export {
   renderAllDimensions,
 } from "./dimensionRenderer";
 export type { DimensionRenderContext } from "./dimensionRenderer";
+
+// Entity rendering
+export {
+  renderEntity,
+  renderLine,
+  renderRect,
+  renderCircle,
+  renderArc,
+  renderEllipse,
+  renderText,
+  renderSelectionGrips,
+  renderPreviewEntity,
+  getLineDashPattern,
+  DEFAULT_TEXT_RENDER_SETTINGS,
+} from "./renderEntity";
+export type {
+  RenderContext as EntityRenderContext,
+  EntityRenderOptions,
+  TextRenderSettings,
+  TextScaleMode as TextRenderScaleMode,
+} from "./renderEntity";
 
 // Types
 export type { DrawingState, DynamicInputState, TextInputState } from "./types";

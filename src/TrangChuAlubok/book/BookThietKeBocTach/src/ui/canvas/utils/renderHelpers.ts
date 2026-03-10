@@ -418,7 +418,7 @@ export function drawOsnapMarker(
 // ==================== Crosshair ====================
 
 /**
- * Draw crosshair at screen position
+ * Draw crosshair at screen position with pickbox (AutoCAD style)
  */
 export function drawCrosshair(
   ctx: CanvasRenderingContext2D,
@@ -428,20 +428,63 @@ export function drawCrosshair(
   options: {
     color?: string;
     lineDash?: number[];
+    pickboxSize?: number; // Size of pickbox in pixels
+    showPickbox?: boolean;
   } = {}
 ): void {
-  const { color = "rgba(255, 255, 255, 0.5)", lineDash = [3, 3] } = options;
+  const {
+    color = "rgba(255, 255, 255, 0.5)",
+    lineDash = [3, 3],
+    pickboxSize = 20,
+    showPickbox = true,
+  } = options;
+
+  const halfBox = pickboxSize / 2;
 
   ctx.strokeStyle = color;
   ctx.lineWidth = 1;
   ctx.setLineDash(lineDash);
   ctx.beginPath();
-  ctx.moveTo(screenPos.x, 0);
-  ctx.lineTo(screenPos.x, height);
-  ctx.moveTo(0, screenPos.y);
-  ctx.lineTo(width, screenPos.y);
+
+  // Vertical line - with gap for pickbox
+  if (showPickbox) {
+    // Top part (from top to pickbox)
+    ctx.moveTo(screenPos.x, 0);
+    ctx.lineTo(screenPos.x, screenPos.y - halfBox);
+    // Bottom part (from pickbox to bottom)
+    ctx.moveTo(screenPos.x, screenPos.y + halfBox);
+    ctx.lineTo(screenPos.x, height);
+
+    // Horizontal line - with gap for pickbox
+    // Left part (from left to pickbox)
+    ctx.moveTo(0, screenPos.y);
+    ctx.lineTo(screenPos.x - halfBox, screenPos.y);
+    // Right part (from pickbox to right)
+    ctx.moveTo(screenPos.x + halfBox, screenPos.y);
+    ctx.lineTo(width, screenPos.y);
+  } else {
+    // No pickbox - draw full lines
+    ctx.moveTo(screenPos.x, 0);
+    ctx.lineTo(screenPos.x, height);
+    ctx.moveTo(0, screenPos.y);
+    ctx.lineTo(width, screenPos.y);
+  }
   ctx.stroke();
   ctx.setLineDash([]);
+
+  // Draw pickbox (solid square at cursor center)
+  if (showPickbox) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.rect(
+      screenPos.x - halfBox,
+      screenPos.y - halfBox,
+      pickboxSize,
+      pickboxSize
+    );
+    ctx.stroke();
+  }
 }
 
 // ==================== Selection Box ====================

@@ -5,7 +5,11 @@
 import { Vec2, IVec2 } from "../geometry/Vec2";
 import { Matrix3 } from "../geometry/Matrix3";
 import { BoundingBox, distancePointToPoint } from "../geometry/GeometryUtils";
-import { BaseEntity, createGripPoint } from "./BaseEntity";
+import {
+  initEntityBase,
+  createGripPoint,
+  serializeEntityBase,
+} from "./EntityBaseUtils";
 import {
   EntityType,
   EntityStyle,
@@ -15,8 +19,19 @@ import {
   IEllipseEntity,
 } from "./Entity.types";
 
-export class EllipseEntity extends BaseEntity implements IEllipseEntity {
+export class EllipseEntity implements IEllipseEntity {
+  public id: string;
   public readonly type = EntityType.ELLIPSE;
+  public name?: string;
+  public layerId: string;
+  public style: EntityStyle;
+  public state: {
+    selected: boolean;
+    hovered: boolean;
+    visible: boolean;
+    locked: boolean;
+  };
+  public metadata?: Record<string, unknown>;
   public center: Vec2;
   public radiusX: number; // Major axis
   public radiusY: number; // Minor axis
@@ -32,9 +47,15 @@ export class EllipseEntity extends BaseEntity implements IEllipseEntity {
       layerId?: string;
       style?: Partial<EntityStyle>;
       rotation?: number;
-    }
+    },
   ) {
-    super(options);
+    const base = initEntityBase(options);
+    this.id = base.id;
+    this.name = base.name;
+    this.layerId = base.layerId;
+    this.style = base.style;
+    this.state = base.state;
+    this.metadata = base.metadata;
     this.center = Vec2.from(center);
     this.radiusX = Math.abs(radiusX);
     this.radiusY = Math.abs(radiusY);
@@ -48,7 +69,7 @@ export class EllipseEntity extends BaseEntity implements IEllipseEntity {
     radiusX: number,
     radiusY: number,
     rotation: number = 0,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): EllipseEntity {
     return new EllipseEntity(center, radiusX, radiusY, { rotation, style });
   }
@@ -63,7 +84,7 @@ export class EllipseEntity extends BaseEntity implements IEllipseEntity {
     center: IVec2,
     axisEnd: IVec2,
     minorRadius: number,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): EllipseEntity {
     const radiusX = distancePointToPoint(center, axisEnd);
     const rotation = Math.atan2(axisEnd.y - center.y, axisEnd.x - center.x);
@@ -81,7 +102,7 @@ export class EllipseEntity extends BaseEntity implements IEllipseEntity {
         layerId: json.layerId,
         style: json.style,
         rotation: json.rotation as number,
-      }
+      },
     );
     entity.metadata = json.metadata;
     return entity;
@@ -114,7 +135,7 @@ export class EllipseEntity extends BaseEntity implements IEllipseEntity {
 
     return new Vec2(
       this.center.x + x * cos - y * sin,
-      this.center.y + x * sin + y * cos
+      this.center.y + x * sin + y * cos,
     );
   }
 
@@ -135,9 +156,15 @@ export class EllipseEntity extends BaseEntity implements IEllipseEntity {
       this.center.clone(),
       this.radiusX,
       this.radiusY,
-      { rotation: this.rotation }
+      {
+        rotation: this.rotation,
+        layerId: this.layerId,
+        style: { ...this.style },
+        name: this.name,
+      },
     );
-    cloned.copyBaseFrom(this);
+    cloned.state = { ...this.state };
+    cloned.metadata = this.metadata ? { ...this.metadata } : undefined;
     return cloned;
   }
 
@@ -196,20 +223,20 @@ export class EllipseEntity extends BaseEntity implements IEllipseEntity {
         this.getPointAtAngle(Math.PI),
         GripType.ENDPOINT,
         this.id,
-        2
+        2,
       ),
       // Minor axis ends
       createGripPoint(
         this.getPointAtAngle(Math.PI / 2),
         GripType.ENDPOINT,
         this.id,
-        3
+        3,
       ),
       createGripPoint(
         this.getPointAtAngle((3 * Math.PI) / 2),
         GripType.ENDPOINT,
         this.id,
-        4
+        4,
       ),
     ];
   }
@@ -226,7 +253,7 @@ export class EllipseEntity extends BaseEntity implements IEllipseEntity {
         const newRadiusX = distancePointToPoint(this.center, newPosition);
         const newRotation = Math.atan2(
           newPosition.y - this.center.y,
-          newPosition.x - this.center.x
+          newPosition.x - this.center.x,
         );
         this.radiusX = newRadiusX;
         this.rotation = gripIndex === 1 ? newRotation : newRotation + Math.PI;
@@ -267,7 +294,7 @@ export class EllipseEntity extends BaseEntity implements IEllipseEntity {
     // Scale center position
     this.center = new Vec2(
       pivot.x + (this.center.x - pivot.x) * sx,
-      pivot.y + (this.center.y - pivot.y) * sy
+      pivot.y + (this.center.y - pivot.y) * sy,
     );
 
     // Scale radii (average for non-uniform scale to maintain ellipse shape)
@@ -277,7 +304,7 @@ export class EllipseEntity extends BaseEntity implements IEllipseEntity {
 
   toJSON(): EntityJSON {
     return {
-      ...this.serializeBase(),
+      ...serializeEntityBase(this),
       type: this.type,
       center: { x: this.center.x, y: this.center.y },
       radiusX: this.radiusX,

@@ -8,7 +8,13 @@ import {
   distancePointToSegment,
   midpoint,
 } from "../geometry/GeometryUtils";
-import { BaseEntity, createGripPoint } from "./BaseEntity";
+import {
+  initEntityBase,
+  createGripPoint,
+  copyEntityBase,
+  serializeEntityBase,
+} from "./EntityBaseUtils";
+import { DEFAULT_STYLE, DEFAULT_STATE } from "./Entity.types";
 import {
   EntityType,
   EntityStyle,
@@ -18,8 +24,19 @@ import {
   ILineEntity,
 } from "./Entity.types";
 
-export class LineEntity extends BaseEntity implements ILineEntity {
+export class LineEntity implements ILineEntity {
+  public id: string;
   public readonly type = EntityType.LINE;
+  public name?: string;
+  public layerId: string;
+  public style: EntityStyle;
+  public state: {
+    selected: boolean;
+    hovered: boolean;
+    visible: boolean;
+    locked: boolean;
+  };
+  public metadata?: Record<string, unknown>;
   public start: Vec2;
   public end: Vec2;
 
@@ -31,9 +48,15 @@ export class LineEntity extends BaseEntity implements ILineEntity {
       name?: string;
       layerId?: string;
       style?: Partial<EntityStyle>;
-    }
+    },
   ) {
-    super(options);
+    const base = initEntityBase(options);
+    this.id = base.id;
+    this.name = base.name;
+    this.layerId = base.layerId;
+    this.style = base.style;
+    this.state = base.state;
+    this.metadata = base.metadata;
     this.start = Vec2.from(start);
     this.end = Vec2.from(end);
   }
@@ -43,7 +66,7 @@ export class LineEntity extends BaseEntity implements ILineEntity {
   static create(
     start: IVec2,
     end: IVec2,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): LineEntity {
     return new LineEntity(start, end, { style });
   }
@@ -94,8 +117,13 @@ export class LineEntity extends BaseEntity implements ILineEntity {
   // ==================== BaseEntity Implementation ====================
 
   clone(): LineEntity {
-    const cloned = new LineEntity(this.start.clone(), this.end.clone());
-    cloned.copyBaseFrom(this);
+    const cloned = new LineEntity(this.start.clone(), this.end.clone(), {
+      layerId: this.layerId,
+      style: { ...this.style },
+      name: this.name,
+    });
+    cloned.state = { ...this.state };
+    cloned.metadata = this.metadata ? { ...this.metadata } : undefined;
     return cloned;
   }
 
@@ -103,11 +131,11 @@ export class LineEntity extends BaseEntity implements ILineEntity {
     return {
       min: new Vec2(
         Math.min(this.start.x, this.end.x),
-        Math.min(this.start.y, this.end.y)
+        Math.min(this.start.y, this.end.y),
       ),
       max: new Vec2(
         Math.max(this.start.x, this.end.x),
-        Math.max(this.start.y, this.end.y)
+        Math.max(this.start.y, this.end.y),
       ),
     };
   }
@@ -182,7 +210,7 @@ export class LineEntity extends BaseEntity implements ILineEntity {
     return new LineEntity(
       this.start.add(perpendicular),
       this.end.add(perpendicular),
-      { style: { ...this.style }, layerId: this.layerId }
+      { style: { ...this.style }, layerId: this.layerId },
     );
   }
 
@@ -190,7 +218,7 @@ export class LineEntity extends BaseEntity implements ILineEntity {
 
   toJSON(): EntityJSON {
     return {
-      ...this.serializeBase(),
+      ...serializeEntityBase(this),
       type: this.type,
       start: this.start.toObject(),
       end: this.end.toObject(),

@@ -20,3 +20,13 @@ export {
   type Project,
   type ProjectPanelProps,
 } from "./ProjectPanel";
+export {
+  TextPanel,
+  type TextSettings,
+  type TextScaleMode,
+  type TextFontFamily,
+  type TextFontWeight,
+  type TextAlign,
+  type TextBaseline,
+  DEFAULT_TEXT_SETTINGS,
+} from "./TextPanel";

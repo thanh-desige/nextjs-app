@@ -34,7 +34,9 @@ export enum ToolMode {
   TRIM = "TRIM",
   EXTEND = "EXTEND",
   OFFSET = "OFFSET",
+  EXPLODE = "EXPLODE",
   FILLET = "FILLET",
+  BOUNDARY = "BOUNDARY",
   MEASURE = "MEASURE",
 }
 

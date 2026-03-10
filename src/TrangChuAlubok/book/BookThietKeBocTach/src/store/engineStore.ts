@@ -11,6 +11,10 @@ import { EngineEventType } from "../core/engine/EngineEvents";
 import { IVec2 } from "../core/geometry/Vec2";
 import { ICommand, CommandResult } from "../core/commands/Command.types";
 import { CadDocument } from "../core/document/CadDocument";
+import {
+  DeleteCanvasEntitiesCommand,
+  NewDocumentCommand,
+} from "../core/commands/canvas/CanvasEntityCommands";
 import type { LayerData } from "../core/document/Layer";
 
 // ==================== Types ====================
@@ -42,8 +46,7 @@ export interface EngineStoreState {
   activeTool: ToolMode;
   selectionMode: SelectionMode;
 
-  // Selection
-  selectedIds: string[];
+  // Selection (selectedIds REMOVED — use CadDocument.getCanvasSelectedIds() via useCanvasEntities)
   hoveredId: string | null;
 
   // Viewport
@@ -95,12 +98,7 @@ export interface EngineStoreActions {
   setActiveTool: (tool: ToolMode) => void;
   setSelectionMode: (mode: SelectionMode) => void;
 
-  // Selection actions
-  select: (ids: string[]) => void;
-  addToSelection: (ids: string[]) => void;
-  removeFromSelection: (ids: string[]) => void;
-  clearSelection: () => void;
-  selectAll: () => void;
+  // Selection actions (REMOVED — use SelectCanvasEntitiesCommand / ClearCanvasSelectionCommand via useCanvasEntities)
   setHovered: (id: string | null) => void;
 
   // Viewport actions
@@ -259,7 +257,6 @@ export const useEngineStore = create<EngineStore>()(
     engine: null,
     activeTool: ToolMode.SELECT,
     selectionMode: SelectionMode.SINGLE,
-    selectedIds: [],
     hoveredId: null,
     zoom: 1,
     panOffset: { x: 0, y: 0 },
@@ -288,11 +285,8 @@ export const useEngineStore = create<EngineStore>()(
       const engine = new CadEngine();
 
       // Subscribe to engine events
-      engine.on(EngineEventType.SELECTION_CHANGED, (data) => {
-        if (data && "selectedIds" in data) {
-          set({ selectedIds: data.selectedIds });
-        }
-      });
+      // SELECTION_CHANGED listener REMOVED — CadDocument is the single source of truth
+      // Selection now flows through Commands → CadDocument, and hooks read via documentVersion
 
       engine.on(EngineEventType.TOOL_CHANGED, (data) => {
         if (data && "tool" in data) {
@@ -348,50 +342,8 @@ export const useEngineStore = create<EngineStore>()(
       set({ selectionMode: mode });
     },
 
-    // Selection actions
-    select: (ids) => {
-      const { engine } = get();
-      if (engine) {
-        engine.select(ids);
-      }
-      set({ selectedIds: ids });
-    },
-
-    addToSelection: (ids) => {
-      const { selectedIds, engine } = get();
-      const newSelection = [...new Set([...selectedIds, ...ids])];
-      if (engine) {
-        engine.select(newSelection, true); // additive
-      }
-      set({ selectedIds: newSelection });
-    },
-
-    removeFromSelection: (ids) => {
-      const { selectedIds, engine } = get();
-      const newSelection = selectedIds.filter((id) => !ids.includes(id));
-      if (engine) {
-        engine.deselect(ids);
-      }
-      set({ selectedIds: newSelection });
-    },
-
-    clearSelection: () => {
-      const { engine } = get();
-      if (engine) {
-        engine.clearSelection();
-      }
-      set({ selectedIds: [] });
-    },
-
-    selectAll: () => {
-      const { engine } = get();
-      if (engine) {
-        const allEntities = engine.getAllEntities();
-        const allIds = allEntities.map((e) => e.id);
-        engine.select(allIds);
-        set({ selectedIds: allIds });
-      }
-    },
+    // Selection actions REMOVED — use SelectCanvasEntitiesCommand / ClearCanvasSelectionCommand
+    // via useCanvasEntities hook. CadDocument is the single source of truth.
 
     setHovered: (id) => {
       const { engine } = get();
@@ -450,16 +402,20 @@ export const useEngineStore = create<EngineStore>()(
     },
 
     zoomToSelection: () => {
-      const { engine, selectedIds } = get();
-      if (engine && selectedIds.length > 0) {
-        // Get bounds of selected entities and zoom to fit
-        // For now, just zoom to fit all
-        engine.zoomToFit();
-        const viewport = engine.getViewport();
-        set({
-          zoom: viewport.zoom,
-          panOffset: { x: viewport.center.x, y: viewport.center.y },
-        });
+      const { engine } = get();
+      if (engine) {
+        const doc = engine.getDocument();
+        const selectedIds = doc?.getCanvasSelectedIds() ?? [];
+        if (selectedIds.length > 0) {
+          // Get bounds of selected entities and zoom to fit
+          // For now, just zoom to fit all
+          engine.zoomToFit();
+          const viewport = engine.getViewport();
+          set({
+            zoom: viewport.zoom,
+            panOffset: { x: viewport.center.x, y: viewport.center.y },
+          });
+        }
       }
     },
 
@@ -494,7 +450,7 @@ export const useEngineStore = create<EngineStore>()(
           snap: newGrid.snapToGrid,
           majorSpacing: newGrid.majorSpacing,
           minorDivisions: Math.round(
-            newGrid.majorSpacing / newGrid.minorSpacing
+            newGrid.majorSpacing / newGrid.minorSpacing,
           ),
         });
       }
@@ -576,6 +532,16 @@ export const useEngineStore = create<EngineStore>()(
         documentVersion: documentVersion + 1,
       });
 
+      // ĐIỀU KIỆN 1: Sync doorStore từ Document sau khi command execute
+      // Import động để tránh circular dependency
+      import("./doorStore").then(({ useDoorStore }) => {
+        const document = engine.getDocument();
+        if (document) {
+          const doors = document.getAllDoors();
+          useDoorStore.getState().syncFromDocument(doors);
+        }
+      });
+
       return result;
     },
 
@@ -596,6 +562,15 @@ export const useEngineStore = create<EngineStore>()(
             canRedo: engine.canRedo(),
             documentVersion: documentVersion + 1,
           });
+
+          // ĐIỀU KIỆN 1: Sync doorStore từ Document sau undo
+          import("./doorStore").then(({ useDoorStore }) => {
+            const document = engine.getDocument();
+            if (document) {
+              const doors = document.getAllDoors();
+              useDoorStore.getState().syncFromDocument(doors);
+            }
+          });
         }
       }
     },
@@ -610,22 +585,23 @@ export const useEngineStore = create<EngineStore>()(
             canRedo: engine.canRedo(),
             documentVersion: documentVersion + 1,
           });
+
+          // ĐIỀU KIỆN 1: Sync doorStore từ Document sau redo
+          import("./doorStore").then(({ useDoorStore }) => {
+            const document = engine.getDocument();
+            if (document) {
+              const doors = document.getAllDoors();
+              useDoorStore.getState().syncFromDocument(doors);
+            }
+          });
         }
       }
     },
 
     newDocument: () => {
-      const { engine, clearSelection } = get();
-      if (engine) {
-        // Clear all entities
-        const allEntities = engine.getAllEntities();
-        for (const entity of allEntities) {
-          engine.removeEntity(entity.id);
-        }
-      }
-      clearSelection();
+      // STEP-2: Route through NewDocumentCommand → History (supports undo/redo)
+      get().executeCommandObject(new NewDocumentCommand());
       set({
-        isModified: false,
         commandHistory: [],
         commandPrompt: "Ready",
       });
@@ -643,35 +619,21 @@ export const useEngineStore = create<EngineStore>()(
     },
 
     deleteEntities: (ids) => {
-      const { engine, selectedIds, clearSelection } = get();
-      if (engine) {
-        for (const id of ids) {
-          engine.removeEntity(id);
-        }
-      }
-      // Clear selection if any selected were deleted
-      if (ids.some((id) => selectedIds.includes(id))) {
-        clearSelection();
-      }
-      set({ isModified: true });
+      // STEP-2: Route through Command → History (supports undo/redo)
+      const command = new DeleteCanvasEntitiesCommand(ids);
+      get().executeCommandObject(command);
     },
 
     /**
-     * @deprecated ĐIỀU KIỆN 1: Use executeCommandObject(UpdateEntityPropertiesCommand) instead
-     * This method bypasses History and should NOT be used for user-initiated changes.
-     * Only use internally for undo/redo operations.
+     * @deprecated STEP-2: BLOCKED — Use executeCommandObject(UpdateEntityPropertiesCommand) instead.
+     * This method previously bypassed History via Object.assign.
+     * Now throws to prevent accidental use.
      */
-    updateEntity: (id, updates) => {
-      const { engine } = get();
-      if (engine) {
-        const entity = engine.getEntity(id);
-        if (entity) {
-          // WARNING: This bypasses History! Use Commands for user actions.
-          Object.assign(entity, updates);
-          engine.requestRender();
-        }
-      }
-      set({ isModified: true });
+    updateEntity: (_id, _updates) => {
+      throw new Error(
+        "DEPRECATED: engineStore.updateEntity bypasses History. " +
+          "Use executeCommandObject(UpdateEntityPropertiesCommand) instead.",
+      );
     },
 
     getEntity: (id) => {
@@ -807,16 +769,14 @@ export const useEngineStore = create<EngineStore>()(
     setByLayer: (value) => {
       set({ useByLayer: value });
     },
-  }))
+  })),
 );
 
 // ==================== Selectors ====================
 
-export const selectSelectedEntities = (state: EngineStoreState) =>
-  state.selectedIds;
-
-export const selectHasSelection = (state: EngineStoreState) =>
-  state.selectedIds.length > 0;
+// selectedIds selectors REMOVED — use CadDocument.getCanvasSelectedIds() via useCanvasEntities
+// export const selectSelectedEntities = ...
+// export const selectHasSelection = ...
 
 export const selectActiveTool = (state: EngineStoreState) => state.activeTool;
 

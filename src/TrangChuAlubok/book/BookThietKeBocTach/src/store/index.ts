@@ -4,8 +4,7 @@
 
 export {
   useEngineStore,
-  selectSelectedEntities,
-  selectHasSelection,
+  // STEP-1.3: selectSelectedEntities, selectHasSelection REMOVED — use CadDocument via useCanvasEntities
   selectActiveTool,
   selectViewport,
   selectMousePosition,
@@ -47,3 +46,13 @@ export {
   type ProjectStoreState,
   type ProjectStoreActions,
 } from "./projectStore";
+
+// Door Store (Quản lý cửa trên canvas)
+export {
+  useDoorStore,
+  selectDoorCount,
+  selectIsDragging,
+  selectHasSelection as selectHasDoorSelection,
+  type DoorStoreState,
+  type DoorStoreActions,
+} from "./doorStore";

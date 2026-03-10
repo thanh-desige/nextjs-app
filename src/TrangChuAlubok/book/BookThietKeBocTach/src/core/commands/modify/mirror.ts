@@ -1,5 +1,7 @@
 /**
  * MIRROR Command - Đối xứng entities qua trục
+ *
+ * STEP-3.9: Uses EntityBridge for immutable transforms.
  */
 
 import {
@@ -10,7 +12,7 @@ import {
 } from "../Command.types";
 import { IVec2 } from "../../geometry/Vec2";
 import { IEntity } from "../../entities/Entity.types";
-import { BaseEntity } from "../../entities/BaseEntity";
+import { mirrorIEntity, cloneIEntity } from "../../entities/EntityBridge";
 
 export class MirrorCommand implements ICommand {
   readonly name = "MIRROR";
@@ -30,7 +32,7 @@ export class MirrorCommand implements ICommand {
     private axisStart: IVec2,
     private axisEnd: IVec2,
     private deleteOriginal: boolean = false,
-    private entityIds?: string[]
+    private entityIds?: string[],
   ) {}
 
   execute(context: CommandContext): CommandResult {
@@ -63,21 +65,20 @@ export class MirrorCommand implements ICommand {
     const resultEntities: IEntity[] = [];
 
     if (this.deleteOriginal) {
-      // Mirror entities tại chỗ (không tạo bản sao)
+      // Mirror entities tại chỗ (immutable — replace in engine)
       for (const entity of entities) {
-        const baseEntity = entity as BaseEntity;
-        baseEntity.mirror(this.axisStart, this.axisEnd);
-        resultEntities.push(entity);
+        const mirrored = mirrorIEntity(entity, this.axisStart, this.axisEnd);
+        context.engine.updateEntity(entity.id, mirrored);
+        resultEntities.push(mirrored);
       }
     } else {
-      // Tạo bản sao đã mirror
+      // Tạo bản sao đã mirror (immutable clone + mirror)
       for (const entity of entities) {
-        const baseEntity = entity as BaseEntity;
-        const copy = baseEntity.clone() as BaseEntity;
-        copy.mirror(this.axisStart, this.axisEnd);
-        context.engine.addEntity(copy);
-        this.newEntityIds.push(copy.id);
-        resultEntities.push(copy);
+        const copy = cloneIEntity(entity);
+        const mirrored = mirrorIEntity(copy, this.axisStart, this.axisEnd);
+        context.engine.addEntity(mirrored);
+        this.newEntityIds.push(mirrored.id);
+        resultEntities.push(mirrored);
       }
     }
 
@@ -94,11 +95,16 @@ export class MirrorCommand implements ICommand {
     if (!this.data) return;
 
     if (this.data.deleteOriginal) {
-      // Mirror ngược lại (mirror lần nữa sẽ về vị trí ban đầu)
+      // Mirror ngược lại (mirror lần nữa sẽ về vị trí ban đầu — immutable)
       for (const entityId of this.data.entityIds) {
-        const entity = context.engine.getEntity(entityId) as BaseEntity;
+        const entity = context.engine.getEntity(entityId);
         if (entity) {
-          entity.mirror(this.data.axisStart, this.data.axisEnd);
+          const restored = mirrorIEntity(
+            entity,
+            this.data.axisStart,
+            this.data.axisEnd,
+          );
+          context.engine.updateEntity(entityId, restored);
         }
       }
     } else {
@@ -119,9 +125,14 @@ export class MirrorCommand implements ICommand {
 
     if (this.data.deleteOriginal) {
       for (const entityId of this.data.entityIds) {
-        const entity = context.engine.getEntity(entityId) as BaseEntity;
+        const entity = context.engine.getEntity(entityId);
         if (entity) {
-          entity.mirror(this.data.axisStart, this.data.axisEnd);
+          const mirrored = mirrorIEntity(
+            entity,
+            this.data.axisStart,
+            this.data.axisEnd,
+          );
+          context.engine.updateEntity(entityId, mirrored);
         }
       }
     } else {
@@ -132,11 +143,14 @@ export class MirrorCommand implements ICommand {
 
       this.newEntityIds = [];
       for (const entity of entities) {
-        const baseEntity = entity as BaseEntity;
-        const copy = baseEntity.clone() as BaseEntity;
-        copy.mirror(this.data.axisStart, this.data.axisEnd);
-        context.engine.addEntity(copy);
-        this.newEntityIds.push(copy.id);
+        const copy = cloneIEntity(entity);
+        const mirrored = mirrorIEntity(
+          copy,
+          this.data.axisStart,
+          this.data.axisEnd,
+        );
+        context.engine.addEntity(mirrored);
+        this.newEntityIds.push(mirrored.id);
       }
     }
 

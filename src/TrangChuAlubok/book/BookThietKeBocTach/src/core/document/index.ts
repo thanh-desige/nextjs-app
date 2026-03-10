@@ -13,3 +13,6 @@ export {
   type HistoryListener,
 } from "./History";
 export * from "./CadDocument";
+export * from "./CadDocument.types";
+export { DimensionDocumentService } from "./DimensionDocumentService";
+export type { DimensionDocumentContext } from "./DimensionDocumentService";

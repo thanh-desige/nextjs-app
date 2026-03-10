@@ -1,0 +1,160 @@
+{
+  "id": "xf93",
+  "name": "Xingfa 93",
+  "brand": "Xingfa",
+  "version": "1.0.0",
+  "description": "Hệ cửa nhôm Xingfa 93 - Cửa trượt, cửa lùa",
+
+  "profiles": {
+    "frameTop": {
+      "code": "XF93-FT01",
+      "name": "Khung bao trên",
+      "type": "frame",
+      "width": 93,
+      "height": 40,
+      "weight": 1.15,
+      "price": 165000,
+      "color": "white"
+    },
+    "frameBottom": {
+      "code": "XF93-FB01",
+      "name": "Khung bao dưới (ray)",
+      "type": "frame",
+      "width": 93,
+      "height": 35,
+      "weight": 1.25,
+      "price": 185000,
+      "color": "white"
+    },
+    "frameSide": {
+      "code": "XF93-FS01",
+      "name": "Khung bao bên",
+      "type": "frame",
+      "width": 93,
+      "height": 45,
+      "weight": 1.05,
+      "price": 155000,
+      "color": "white"
+    },
+    "sash": {
+      "code": "XF93-S01",
+      "name": "Khung cánh trượt",
+      "type": "sash",
+      "width": 40,
+      "height": 93,
+      "weight": 1.1,
+      "price": 175000,
+      "color": "white"
+    },
+    "interlock": {
+      "code": "XF93-IL01",
+      "name": "Thanh chống gió",
+      "type": "mullion",
+      "width": 25,
+      "height": 93,
+      "weight": 0.65,
+      "price": 95000,
+      "color": "white"
+    },
+    "bead": {
+      "code": "XF93-B01",
+      "name": "Nẹp kính",
+      "type": "bead",
+      "width": 20,
+      "height": 25,
+      "weight": 0.28,
+      "price": 38000,
+      "color": "white"
+    }
+  },
+
+  "accessories": {
+    "rollerTop": {
+      "code": "XF93-R01",
+      "name": "Bánh xe trên",
+      "type": "roller",
+      "unit": "pcs",
+      "price": 45000,
+      "applicableTo": ["sliding-2p", "sliding-4p"]
+    },
+    "rollerBottom": {
+      "code": "XF93-R02",
+      "name": "Bánh xe dưới",
+      "type": "roller",
+      "unit": "pcs",
+      "price": 65000,
+      "applicableTo": ["sliding-2p", "sliding-4p"]
+    },
+    "handleRecessed": {
+      "code": "XF93-HR01",
+      "name": "Tay nắm âm",
+      "type": "handle",
+      "unit": "pcs",
+      "price": 95000,
+      "applicableTo": ["sliding-2p", "sliding-4p"]
+    },
+    "lockSliding": {
+      "code": "XF93-LS01",
+      "name": "Khóa cửa trượt",
+      "type": "lock",
+      "unit": "set",
+      "price": 220000,
+      "applicableTo": ["sliding-2p", "sliding-4p"]
+    },
+    "antiLift": {
+      "code": "XF93-AL01",
+      "name": "Chốt chống nâng",
+      "type": "other",
+      "unit": "pcs",
+      "price": 35000,
+      "applicableTo": ["sliding-2p", "sliding-4p"]
+    },
+    "sealBrush": {
+      "code": "XF93-SB01",
+      "name": "Ron chổi",
+      "type": "seal",
+      "unit": "m",
+      "price": 12000,
+      "applicableTo": ["sliding-2p", "sliding-4p"]
+    },
+    "sealRubber": {
+      "code": "XF93-SR01",
+      "name": "Ron cao su",
+      "type": "seal",
+      "unit": "m",
+      "price": 18000,
+      "applicableTo": ["sliding-2p", "sliding-4p"]
+    }
+  },
+
+  "glass": {
+    "minThickness": 5,
+    "maxThickness": 28,
+    "supportedTypes": [
+      "clear",
+      "tinted",
+      "reflective",
+      "laminated",
+      "tempered",
+      "insulated"
+    ],
+    "defaultThickness": 10,
+    "defaultType": "tempered"
+  },
+
+  "constraints": {
+    "minWidth": 1000,
+    "maxWidth": 6000,
+    "minHeight": 800,
+    "maxHeight": 2700,
+    "maxPanelWidth": 1500,
+    "maxPanelWeight": 100
+  },
+
+  "formulas": {
+    "frameDeduction": 12,
+    "sashDeduction": 18,
+    "glassDeduction": 25,
+    "overlap": 40
+  }
+}

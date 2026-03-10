@@ -1,238 +1,266 @@
-# 2 ĐIỀU KIỆN BẮT BUỘC - Compliance Checklist
+# COMPLIANCE_CHECKLIST.md
+
+# Architecture & Logic Compliance (Web CAD + Door Engine + BOM + ERP)
+
+# Status: NON-NEGOTIABLE (Bất khả xâm phạm)
+
+#
+
+# Quy tắc sử dụng:
+
+# - Áp dụng cho mọi code mới/sửa, đặc biệt code do AI sinh.
+
+# - Chỉ cần 1 mục FAIL => REJECT PR / REJECT OUTPUT.
+
+# - Không "fix tạm", không "để sau".
+
+# - Khi FAIL: phải refactor về đúng kiến trúc trước khi viết feature mới.
+
+#
+
+# 📌 Tài liệu liên quan:
+
+# - [AUTOCAD_BEHAVIOR_RULES.md](./docs/AUTOCAD_BEHAVIOR_RULES.md) - 14 nguyên tắc UX/Interaction chuẩn AutoCAD
 
 ---
 
-## ⚠️ QUY TẮC VÀNG: LUÔN VIẾT ĐÚNG CODE, ĐÚNG FILE, ĐÚNG CẤU TRÚC
+## 0) Định nghĩa nhanh (để tránh hiểu sai)
 
-**PHẢI LUÔN NHỚ:**
-
-1. **ĐÚNG FILE**: Code phải đặt đúng file theo chức năng
-
-   - Commands → `core/commands/`
-   - Entities → `core/entities/`
-   - Hooks → `hooks/`
-   - UI Components → `ui/`
-   - Domain logic → `domain/`
-
-2. **ĐÚNG CẤU TRÚC**: Tuân thủ kiến trúc đã định
-
-   - Xem sơ đồ: `sơ đồ.md` ở thư mục gốc
-   - Core không import từ UI
-   - Hooks không chứa business logic phức tạp
-   - Domain không phụ thuộc vào UI
-
-3. **ĐÚNG CODE**: Code phải tuân thủ patterns đã có
-   - Commands kế thừa từ base và implement execute/undo
-   - Hooks sử dụng Commands, không thao tác trực tiếp
-   - UI components sử dụng hooks, không gọi core trực tiếp
-
-**TRƯỚC KHI VIẾT CODE, HÃY HỎI:**
-
-- [ ] File này thuộc thư mục nào trong cấu trúc?
-- [ ] Pattern nào đang được sử dụng cho loại code này?
-- [ ] Code mới có phá vỡ kiến trúc hiện tại không?
+- **UI/Canvas**: React components, renderer, overlay/modal, drag-drop, handlers UI.
+- **CadEngine**: nơi điều phối lệnh (Command), xử lý tương tác ở mức logic, không render.
+- **Document**: nguồn sự thật (source-of-truth) cho entities (state mô hình).
+- **History**: undo/redo; mọi thay đổi entity phải ghi lịch sử.
+- **Entity**: dữ liệu thuần biểu diễn đối tượng trong Document (KHÔNG behavior).
+- **Door-engine**: logic sinh kỹ thuật (geometry + materials) đọc systems JSON.
+- **Analysis**: hậu engine (BOM/Quantity) đọc EngineOutput (KHÔNG đọc canvas).
+- **Systems**: dữ liệu hãng/hệ (JSON) read-only, không logic.
+- **Preview**: mọi thứ để hiển thị (outline, dim overlay, handles…) KHÔNG dùng tính toán.
 
 ---
 
-## ĐIỀU KIỆN 1: UI → CadEngine → Document → History
+## 1) Gating rules (Cổng chặn – bắt buộc đạt trước khi review sâu)
 
-**Quy tắc:** UI không được sửa entity trực tiếp. Mọi thay đổi PHẢI đi qua:
+### G1 — Unidirectional Flow
 
-```
-UI Component → Hook/Callback → Command → CadDocument → History
-```
+- [ ] Luồng xử lý tuân thủ: **UI → CadEngine → Document → History**
+- [ ] UI/Hook không được mutate entity/store trực tiếp
+- [ ] Mọi create/update/delete entity đều đi qua Command và ghi History
 
-### ✅ Compliance Status
+**FAIL nếu phát hiện:**
 
-| Component                          | Status | Notes                                    |
-| ---------------------------------- | ------ | ---------------------------------------- |
-| CadDrawingCanvas (controlled mode) | ✅     | Gọi callbacks (onAddEntity, etc.)        |
-| useCanvasEntities hook             | ✅     | Tạo Commands và gọi executeCommandObject |
-| CanvasEntityCommands               | ✅     | Commands dùng context.document           |
-| CadEngine.executeCommand           | ✅     | Pass document vào context, push history  |
-| History system                     | ✅     | Commands được lưu, undo/redo hoạt động   |
+- UI/hook gọi update trực tiếp vào store/document (bypass Command)
+- Có update "silent" (không ghi History)
 
-### ❌ Violations to Avoid
+### G2 — Layer Isolation
 
-```typescript
-// ❌ WRONG: Gọi trực tiếp document method từ UI
-document.addCanvasEntity(entity);
+- [ ] systems/ chỉ chứa data
+- [ ] door-engines/ không import UI/hook/store/domain/analysis
+- [ ] analysis/ không import UI/canvas/systems trực tiếp
+- [ ] domain/ không import door-engines/
+- [ ] UI/hook không import door-engines/
 
-// ✅ CORRECT: Qua Command
-const command = new AddCanvasEntityCommand(entity);
-executeCommandObject(command);
+**FAIL nếu phát hiện import ngược chiều hoặc import chéo layer.**
 
-// ✅ CORRECT: Qua Hook
-const { addEntity } = useCanvasEntities();
-addEntity(entity);
+### G3 — PropertySchema Supremacy
 
-// ✅ CORRECT: Qua controlled mode callback
-onAddEntity?.(entity);
-```
+- [ ] Mọi property Entity phải đăng ký trong `core/properties/PropertySchema.ts`
+- [ ] Không có property "lạ" được gắn trực tiếp vào Entity mà không qua schema
+
+**FAIL nếu có field mới không nằm trong schema.**
 
 ---
 
-## ĐIỀU KIỆN 2: PropertySchema là luật tối cao
+## 2) Điều kiện bắt buộc (Foundations)
 
-**Quy tắc:** Mọi property changes PHẢI được validate bởi PropertySchema trước khi apply.
+### F1 — Không trộn logic (Separation of Concerns)
 
-```
-User Input → PropertySchema.validate() → Command.execute() → Document
-```
+- [ ] UI/Canvas: chỉ input + render; không business logic; không mutate entity trực tiếp
+- [ ] CadEngine/Commands: nơi duy nhất thực thi thay đổi entity
+- [ ] Document: source of truth; không render; không gọi UI
+- [ ] History: ghi lại mọi thay đổi (undo/redo)
 
-### ✅ Compliance Status - Canvas Commands
+**FAIL nếu:**
 
-| Component                     | Status | Notes                                        |
-| ----------------------------- | ------ | -------------------------------------------- |
-| AddCanvasEntityCommand        | ✅     | Validate entity via validateCanvasUpdates()  |
-| UpdateCanvasEntityCommand     | ✅     | Validate updates via validateCanvasUpdates() |
-| BatchAddCanvasEntitiesCommand | ✅     | Validate ALL entities trước khi add          |
-| CopyCanvasEntitiesCommand     | ✅     | Validate copied entities                     |
-| MoveCanvasEntitiesCommand     | ✅     | (Points không cần schema validation)         |
-| DeleteCanvasEntitiesCommand   | ✅     | (Delete không cần validation)                |
+- Canvas sửa entity trực tiếp
+- Hook/Component chứa logic cập nhật entity (ngoài Command)
 
-### ✅ Compliance Status - Entity Commands (IEntity)
+### F2 — PropertySchema là luật tối cao
 
-| Component                     | Status | Notes                                          |
-| ----------------------------- | ------ | ---------------------------------------------- |
-| UpdateEntityPropertyCommand   | ✅     | Validate via propertySchema.validateProperty() |
-| UpdateEntityStyleCommand      | ✅     | Validate ALL style props                       |
-| UpdateEntityPropertiesCommand | ✅     | Validate ALL properties                        |
-| BatchUpdateEntitiesCommand    | ✅     | Validate ALL props cho ALL entities            |
+- [ ] Tạo/sửa property phải thông qua schema (đăng ký, validate, defaults)
+- [ ] Plugin/script/constraint tuân thủ schema
 
-### ✅ Compliance Status - Hooks & Appliers
+**FAIL nếu:**
 
-| Component          | Status | Notes                                          |
-| ------------------ | ------ | ---------------------------------------------- |
-| useProperties hook | ✅     | Validate via PropertyApplier trước khi command |
-| PropertyApplier    | ✅     | Validate via propertySchema.validateProperty() |
+- Thêm field vào entity mà không đăng ký schema
+- Có "temporary field" gắn vào entity để tiện render
 
-### Type Mapping
+### F3 — 1 file = 1 trách nhiệm (Single Responsibility per File)
 
-CanvasEntity uses lowercase types, PropertySchema uses EntityType enum:
+Mỗi file chỉ thuộc một nhóm:
 
-```typescript
-mapCanvasTypeToEntityType():
-  "line"     → EntityType.LINE
-  "polyline" → EntityType.POLYLINE
-  "rect"     → EntityType.RECT
-  "circle"   → EntityType.CIRCLE
-```
+- [ ] Data (types, schema, config)
+- [ ] Entity (data thuần)
+- [ ] Command/Engine/Service (logic)
+- [ ] UI/Renderer (render)
+- [ ] Store/State container (state)
 
-### Property Key Mapping
+**Luật khóa tay (bắt buộc kiểm tra):**
 
-```typescript
-Canvas Property → PropertySchema Key:
-  "color"     → "strokeColor"
-  "lineWidth" → "strokeWidth"
-```
+- [ ] Nếu 1 file import từ **≥ 2 layer khác nhau** ⇒ **THIẾT KẾ SAI**
+- [ ] Mọi create/update/delete entity **bắt buộc** Command + History
 
-### ❌ Violations to Avoid
+**Bảng phân vai theo thư mục (định vị nhanh):**
 
-```typescript
-// ❌ WRONG: Update property without validation
-document.updateCanvasEntity(id, { color: userInput });
-
-// ✅ CORRECT: Qua Command (auto validates)
-const command = new UpdateCanvasEntityCommand(id, { color: userInput });
-executeCommandObject(command);
-// Command sẽ:
-// 1. Validate color qua PropertySchema
-// 2. Reject nếu invalid
-// 3. Apply nếu valid
-```
+| Loại code     | Thư mục đúng     | Không được                       |
+| ------------- | ---------------- | -------------------------------- |
+| Commands      | `core/commands/` | Không viết trong hooks/UI        |
+| Entities      | `core/entities/` | Không chứa logic/behavior        |
+| Hooks         | `hooks/`         | Không chứa business logic/mutate |
+| UI Components | `ui/`            | Không mutate core trực tiếp      |
+| Domain        | `domain/`        | Không phụ thuộc UI/door-engine   |
+| Door Engine   | `door-engines/`  | Không import UI/store/domain     |
+| Systems data  | `systems/`       | Chỉ data, không logic            |
 
 ---
 
-## How to Verify Compliance
+## 3) 7 RULES bắt buộc (Luật sắt)
 
-### Test ĐIỀU KIỆN 1:
+### R1 — Style KHÔNG sinh Material
 
-1. Draw entity → Check history has AddCanvasEntityCommand
-2. Move entity → Check history has MoveCanvasEntitiesCommand
-3. Delete entity → Check history has DeleteCanvasEntitiesCommand
-4. Undo/Redo → Verify changes are reverted/reapplied
+- [ ] Không map `style.fillColor`/style visual → material
+- [ ] Style chỉ là hiển thị/gợi ý, không dùng cho BOM
 
-### Test ĐIỀU KIỆN 2:
+**FAIL nếu BOM/logic suy vật liệu từ màu.**
 
-1. Try setting invalid color (e.g., "not-a-color") → Should be rejected
-2. Try setting negative lineWidth → Should be rejected/coerced
-3. Check console for validation errors
+### R2 — BOM đọc từ Material/EngineOutput, KHÔNG đọc Canvas
 
----
+- [ ] BOM chỉ tính từ **EngineOutput → materialId → geometry**
+- [ ] BOM không đọc preview/canvas/entities-render
 
-## Files Implementing Compliance
+**FAIL nếu:**
 
-### ĐIỀU KIỆN 1:
+- BOM đọc từ fillColor/previewBounds/canvas layer
 
-- `ui/canvas/CadDrawingCanvas.tsx` - Controlled mode
-- `hooks/useCanvasEntities.ts` - Hook for commands
-- `core/commands/canvas/CanvasEntityCommands.ts` - All commands
-- `core/engine/CadEngine.ts` - executeCommand with history
-- `store/engineStore.ts` - executeCommandObject
+### R3 — Cost là read-only
 
-### ĐIỀU KIỆN 2:
+- [ ] User không nhập cost trực tiếp
+- [ ] Cost chỉ thay đổi khi đổi geometry hoặc material/system
 
-- `core/commands/canvas/CanvasEntityCommands.ts` - Validation functions
-- `core/properties/PropertySchema.ts` - Schema definitions
-- `core/properties/PropertyApplier.ts` - Apply with validation
-- `hooks/useProperties.ts` - UI property changes
+**FAIL nếu có field cost editable trong properties.**
 
----
+### R4 — Geometry có 1 nguồn duy nhất: door-engine
 
-## When Adding New Features
+- [ ] Geometry kỹ thuật chỉ sinh trong `door-engines/`
+- [ ] Không tính geometry kỹ thuật trong Entity/CadEngine/UI
 
-### ⚠️ QUAN TRỌNG: Plugin, Script, Parametric Constraint
+**FAIL nếu có "tạm tính" geometry để dùng cho BOM/cắt kính/cắt nhôm.**
 
-Khi thêm tính năng mới như **plugin**, **script**, hoặc **parametric constraint**, BẮT BUỘC phải:
+### R5 — Entity chỉ chứa data, không chứa logic
 
-1. **Tạo Command mới** thay vì gọi document trực tiếp
-2. **Validate qua PropertySchema** trước khi apply
+- [ ] Entity không có methods hành vi (setPosition, setSize, clone, needsEngineRun…)
+- [ ] Entity không gọi engine, không tự mutate logic
 
-```typescript
-// ❌ SAI: Plugin/Script gọi trực tiếp document
-function myPlugin(document: CadDocument) {
-  document.addCanvasEntity(entity); // Vi phạm ĐIỀU KIỆN 1
-  document.updateCanvasEntity(id, { color: "red" }); // Vi phạm ĐIỀU KIỆN 2
-}
+**FAIL nếu Entity có behavior ngoài serialize/constructor thuần.**
 
-// ✅ ĐÚNG: Plugin/Script tạo Command và execute qua CadEngine
-function myPlugin(engine: CadEngine) {
-  const addCmd = new AddCanvasEntityCommand(entity);
-  engine.executeCommand(addCmd); // → Document → History ✓
+### R6 — Preview chỉ để nhìn (không dùng cho tính toán)
 
-  const updateCmd = new UpdateCanvasEntityCommand(id, { color: "red" });
-  engine.executeCommand(updateCmd); // → Validate → Document → History ✓
-}
+- [ ] previewBounds/outline/dim/handles chỉ dùng render & thao tác UI
+- [ ] Không dùng preview cho BOM/pricing/inventory/logic kỹ thuật
 
-// ✅ ĐÚNG: Parametric constraint tạo Command
-class MyConstraint {
-  apply(engine: CadEngine, entityId: string, newValue: number) {
-    const cmd = new UpdateCanvasEntityCommand(entityId, { width: newValue });
-    engine.executeCommand(cmd); // Tự động validate qua PropertySchema
-  }
-}
-```
+**FAIL nếu preview trở thành nguồn dữ liệu nghiệp vụ.**
 
-### Tại sao phải tuân thủ?
+### R7 — Mọi thay đổi phải để lại dấu vết (Command + History)
 
-| Nếu vi phạm                   | Hậu quả                                        |
-| ----------------------------- | ---------------------------------------------- |
-| Gọi document trực tiếp        | ❌ Undo/Redo hỏng, History không ghi nhận      |
-| Không validate PropertySchema | ❌ PropertiesPanel vỡ, dữ liệu không nhất quán |
+- [ ] Tạo/sửa/xóa entity luôn qua Command
+- [ ] History luôn ghi lại (undo/redo hoạt động)
+
+**FAIL nếu update silent hoặc bypass Command/History.**
 
 ---
 
-### Always ask:
+## 4) Kiểm tra phụ thuộc (Dependency checks – bắt buộc)
 
-1. Does this modify entity data? → Must go through Command
-2. Does this change properties? → Must validate via PropertySchema
-3. Is there a history entry? → Must be undoable
+### D0 — Quy tắc import chéo layer
 
-### Checklist for new entity operations:
+- [ ] door-engines/ không import: `ui/`, `hooks/`, `store/`, `domain/`, `analysis/`
+- [ ] analysis/ không import: `ui/`, `hooks/`, `canvas/`, `systems/` (đọc output qua interface/adapter)
+- [ ] domain/ không import: `door-engines/`, `ui/`, `hooks/`
+- [ ] ui/ & hooks/ không import: `door-engines/`
 
-- [ ] Create Command class in CanvasEntityCommands.ts
-- [ ] Command validates via validateCanvasUpdates()
-- [ ] Command has undo() implementation
-- [ ] Hook exposes method via useCanvasEntities
-- [ ] UI calls hook method or controlled callback
+**FAIL nếu có bất kỳ import ngược chiều.**
+
+---
+
+## 5) Door-specific compliance (trọng điểm cho hệ cửa)
+
+### E1 — DoorEntity schema tối thiểu (data-only)
+
+- [ ] DoorEntity chỉ chứa:
+  - id, type="door"
+  - position, rotation, scale
+  - templateId, doorType, params {width,height,options?}, systemId (string)
+  - previewBounds (UI-only)
+  - engineOutputRef/engineOutputId + status (none/generated/outdated)
+  - createdAt, updatedAt
+- [ ] DoorEntity KHÔNG chứa:
+  - geometry chi tiết
+  - materials list
+  - BOM/cost
+
+### E2 — DoorRenderer
+
+- [ ] Render từ previewBounds + params (UI-only)
+- [ ] Không dùng EngineOutput cho render
+- [ ] Không export data kỹ thuật từ render layer
+
+### E3 — Engine execution boundary
+
+- [ ] Door-engine chỉ chạy khi:
+  - user mở File BOM / tính BOM
+  - hoặc Ghi sổ / Export (khi được thiết kế)
+- [ ] Kéo thả / resize / di chuyển chỉ mark `outdated` (lazy)
+
+---
+
+## 6) Auto-reject signals (nhìn là loại)
+
+- [ ] Không có method logic trong Entity
+- [ ] Không có hook gọi store update trực tiếp
+- [ ] Không có BOM đọc từ preview/canvas
+- [ ] Không có geometry kỹ thuật sinh ngoài door-engine
+- [ ] Không có file import từ ≥2 layer khác nhau
+
+**Nếu bất kỳ mục nào không đạt ⇒ REJECT.**
+
+---
+
+## 7) Quy trình review bắt buộc (để dùng với AI)
+
+### Step A — AI self-audit (bắt AI tự khai báo)
+
+- [ ] AI liệt kê các file nó tạo/sửa
+- [ ] AI mô tả luồng mutate entity (qua Command nào)
+- [ ] AI chỉ ra nơi ghi History (undo/redo)
+- [ ] AI cam kết không import chéo layer
+
+### Step B — Reviewer verify (người review kiểm chứng)
+
+- [ ] Grep/scan import để phát hiện chéo layer
+- [ ] Tìm mọi "updateDoor/addDoor/removeDoor" và xác nhận chỉ được gọi từ Commands
+- [ ] Kiểm tra Entity không có methods logic
+- [ ] Kiểm tra BOM không đọc canvas/preview
+
+---
+
+## 8) Nguyên lý kết luận (ghi nhớ)
+
+> Canvas = để nhìn  
+> Entity = trạng thái  
+> Engine = tính kỹ thuật  
+> BOM = hậu quả của Engine  
+> Material = nguồn đơn giá  
+> History = dấu vết bắt buộc
+
+---
+
+# End of file

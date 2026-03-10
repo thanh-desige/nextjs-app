@@ -1,325 +1,532 @@
 "use client";
-import React, { useState, useEffect } from "react";
-
-interface PropertyItem {
-  key: string;
-  label: string;
-  value: string | number;
-  type: "text" | "number" | "color" | "select";
-  options?: string[];
-  editable?: boolean;
-}
+import React, { useState, useRef } from "react";
+import { useCanvasStore } from "../../../store/canvasStore";
+import LayerPanelConnected from "../panels/LayerPanelConnected";
+import { COLORS } from "../../../constants/colors";
 
 interface SidebarRightProps {
-  isCollapsed?: boolean;
   onToggle?: () => void;
-  selectedObject?: {
-    id: string;
-    type: string;
-    properties: PropertyItem[];
-  } | null;
-  onPropertyChange?: (key: string, value: string | number) => void;
 }
 
-export default function SidebarRight({
-  isCollapsed: externalIsCollapsed,
-  onToggle,
-  selectedObject = null,
-  onPropertyChange,
-}: SidebarRightProps): React.ReactElement {
-  const [width, setWidth] = useState(250);
-  const [isDragging, setIsDragging] = useState(false);
-  const [activeTab, setActiveTab] = useState<"properties" | "layers" | "bom">(
-    "properties"
-  );
-  const [isMobile, setIsMobile] = useState(false);
-  const [internalCollapsed, setInternalCollapsed] = useState(false);
+type TabType = "properties" | "bom" | "layers";
 
-  // Responsive hook
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (mobile) {
-        setInternalCollapsed(true);
-        setWidth(Math.min(200, window.innerWidth * 0.6));
-      } else {
-        setWidth(250);
+export default function SidebarRight({ onToggle }: SidebarRightProps) {
+  const [width, setWidth] = useState(280);
+  const [isResizing, setIsResizing] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>("properties");
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  const selectedObject = useCanvasStore((state) => state.selectedObject);
+  const objects = useCanvasStore((state) => state.objects);
+  const updateObject = useCanvasStore((state) => state.updateObject);
+
+  const selectedObj = objects.find((obj) => obj.id === selectedObject);
+
+  // Mock BOM data
+  const bomItems = [
+    {
+      id: "1",
+      name: "Nhôm thanh 40x40",
+      quantity: 12,
+      unit: "m",
+      unitPrice: 150000,
+    },
+    { id: "2", name: "Kính 8mm", quantity: 4.5, unit: "m²", unitPrice: 450000 },
+    { id: "3", name: "Bản lề 3D", quantity: 6, unit: "cái", unitPrice: 85000 },
+    {
+      id: "4",
+      name: "Tay nắm inox",
+      quantity: 2,
+      unit: "cái",
+      unitPrice: 120000,
+    },
+    {
+      id: "5",
+      name: "Gioăng cao su",
+      quantity: 8,
+      unit: "m",
+      unitPrice: 25000,
+    },
+  ];
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsResizing(true);
+    e.preventDefault();
+  };
+
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      if (sidebarRef.current) {
+        const sidebarRect = sidebarRef.current.getBoundingClientRect();
+        const newWidth = sidebarRect.right - e.clientX;
+        if (newWidth >= 150 && newWidth <= 450) {
+          setWidth(newWidth);
+        }
       }
     };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
-  const isCollapsed =
-    externalIsCollapsed !== undefined ? externalIsCollapsed : internalCollapsed;
-  const handleToggle =
-    onToggle || (() => setInternalCollapsed(!internalCollapsed));
-
-  const handleMouseDown = () => {
-    setIsDragging(true);
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isDragging) {
-      const maxWidth = isMobile ? 250 : 400;
-      const minWidth = isMobile ? 120 : 150;
-      const newWidth = Math.min(
-        Math.max(window.innerWidth - e.clientX, minWidth),
-        maxWidth
-      );
-      setWidth(newWidth);
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-    }
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+    const handleMouseUp = () => {
+      setIsResizing(false);
     };
-  }, [isDragging, isMobile]);
 
-  if (isCollapsed) {
-    return (
-      <div
-        style={{
-          width: 32,
-          backgroundColor: "#1e1e2e",
-          borderLeft: "1px solid #333",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          paddingTop: 8,
-        }}
-      >
-        <button
-          onClick={handleToggle}
-          style={{
-            width: 24,
-            height: 24,
-            background: "transparent",
-            border: "none",
-            color: "#888",
-            cursor: "pointer",
-            fontSize: 14,
-          }}
-          title="Expand Properties"
-        >
-          ◀
-        </button>
-      </div>
-    );
-  }
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    }
 
-  const minWidthValue = isMobile ? 120 : 150;
-  const maxWidthValue = isMobile ? 250 : 400;
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
 
   return (
     <div
+      ref={sidebarRef}
       style={{
-        width,
-        minWidth: minWidthValue,
-        maxWidth: maxWidthValue,
-        backgroundColor: "#1e1e2e",
-        borderLeft: "1px solid #333",
+        width: `${width}px`,
+        height: "100%",
+        backgroundColor: "#252526",
+        borderLeft: `1px solid ${COLORS.border}`,
         display: "flex",
         flexDirection: "column",
+        overflow: "hidden",
         position: "relative",
+        transition: isResizing ? "none" : "width 0.3s ease",
       }}
     >
-      {/* Resize Handle */}
+      {/* Resize Handle - kéo co dãn */}
       <div
         onMouseDown={handleMouseDown}
         style={{
           position: "absolute",
           left: 0,
           top: 0,
-          bottom: 0,
-          width: 4,
-          cursor: "ew-resize",
-          background: isDragging ? "#4a90d9" : "transparent",
+          width: "6px",
+          height: "100%",
+          cursor: "col-resize",
+          backgroundColor: isResizing ? "rgba(255, 0, 0, 0.3)" : "transparent",
+          transition: "background-color 0.2s",
+          zIndex: 1000,
+        }}
+        onMouseEnter={(e) => {
+          if (!isResizing)
+            e.currentTarget.style.backgroundColor = "rgba(255, 0, 0, 0.2)";
+        }}
+        onMouseLeave={(e) => {
+          if (!isResizing)
+            e.currentTarget.style.backgroundColor = "transparent";
         }}
       />
+      {/* Header */}
+      <div
+        style={{
+          padding: "12px",
+          borderBottom: `1px solid ${COLORS.border}`,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          color: "#BA00AE",
+          fontWeight: 500,
+          fontSize: "20px",
+        }}
+      >
+        <span>🔧 Panel</span>
+        <button
+          onClick={onToggle}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#ffffff",
+            cursor: "pointer",
+            fontSize: "0px",
+          }}
+        >
+          ✕
+        </button>
+      </div>
 
       {/* Tabs */}
       <div
         style={{
           display: "flex",
-          borderBottom: "1px solid #333",
+          borderBottom: `1px solid ${COLORS.border}`,
         }}
       >
-        {(["properties", "layers", "bom"] as const).map((tab) => (
+        {[
+          { id: "properties" as TabType, label: "📋 Properties" },
+          { id: "bom" as TabType, label: "📦 BOM" },
+          { id: "layers" as TabType, label: "📑 Layers" },
+        ].map((tab) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
             style={{
               flex: 1,
               padding: "8px 4px",
-              background: activeTab === tab ? "#252535" : "transparent",
+              backgroundColor:
+                activeTab === tab.id ? "rgba(186, 0, 174, 0.2)" : "transparent",
               border: "none",
-              borderBottom: activeTab === tab ? "2px solid #4a90d9" : "none",
-              color: activeTab === tab ? "#fff" : "#888",
-              fontSize: 10,
+              borderBottom:
+                activeTab === tab.id
+                  ? "2px solid #BA00AE"
+                  : "2px solid transparent",
+              color: activeTab === tab.id ? "#BA00AE" : "#999",
+              fontSize: "11px",
+              fontWeight: activeTab === tab.id ? 600 : 400,
               cursor: "pointer",
-              textTransform: "uppercase",
+              transition: "all 0.2s",
             }}
           >
-            {tab === "properties" && "📋"}
-            {tab === "layers" && "📚"}
-            {tab === "bom" && "📊"}
-            <span
-              style={{ marginLeft: 4, display: isMobile ? "none" : "inline" }}
-            >
-              {tab}
-            </span>
+            {tab.label}
           </button>
         ))}
-        <button
-          onClick={handleToggle}
-          style={{
-            width: 28,
-            background: "transparent",
-            border: "none",
-            color: "#888",
-            cursor: "pointer",
-            fontSize: 10,
-          }}
-          title="Collapse"
-        >
-          ▶
-        </button>
       </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
+      {/* Tab Content */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "12px" }}>
+        {/* Properties Tab */}
         {activeTab === "properties" && (
-          <div>
-            {selectedObject ? (
-              <>
-                <div
-                  style={{
-                    padding: "8px",
-                    background: "#252535",
-                    borderRadius: 4,
-                    marginBottom: 12,
-                  }}
-                >
-                  <span style={{ fontSize: 10, color: "#888" }}>Type: </span>
-                  <span style={{ fontSize: 11, color: "#4a90d9" }}>
-                    {selectedObject.type}
-                  </span>
-                </div>
-                {selectedObject.properties.map((prop) => (
-                  <div
-                    key={prop.key}
+          <>
+            {selectedObj ? (
+              <div>
+                <div style={{ marginBottom: "16px" }}>
+                  <label
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      marginBottom: 8,
-                      gap: 8,
+                      color: "#ffffff",
+                      fontSize: "12px",
+                      fontWeight: 500,
                     }}
                   >
-                    <span
-                      style={{
-                        fontSize: 10,
-                        color: "#888",
-                        width: 60,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {prop.label}:
-                    </span>
-                    {prop.type === "color" ? (
-                      <input
-                        type="color"
-                        value={String(prop.value)}
-                        onChange={(e) =>
-                          onPropertyChange?.(prop.key, e.target.value)
-                        }
-                        disabled={!prop.editable}
-                        style={{ width: 32, height: 20, border: "none" }}
-                      />
-                    ) : prop.type === "select" ? (
-                      <select
-                        value={String(prop.value)}
-                        onChange={(e) =>
-                          onPropertyChange?.(prop.key, e.target.value)
-                        }
-                        disabled={!prop.editable}
-                        style={{
-                          flex: 1,
-                          padding: "3px 6px",
-                          background: "#252535",
-                          border: "1px solid #444",
-                          borderRadius: 3,
-                          color: "#ddd",
-                          fontSize: 10,
-                        }}
-                      >
-                        {prop.options?.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type={prop.type}
-                        value={prop.value}
-                        onChange={(e) =>
-                          onPropertyChange?.(
-                            prop.key,
-                            prop.type === "number"
-                              ? parseFloat(e.target.value)
-                              : e.target.value
-                          )
-                        }
-                        disabled={!prop.editable}
-                        style={{
-                          flex: 1,
-                          padding: "3px 6px",
-                          background: "#252535",
-                          border: "1px solid #444",
-                          borderRadius: 3,
-                          color: "#ddd",
-                          fontSize: 10,
-                        }}
-                      />
-                    )}
-                  </div>
-                ))}
-              </>
+                    Tên:
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedObj.name}
+                    onChange={(e) =>
+                      updateObject(selectedObj.id, { name: e.target.value })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "6px 8px",
+                      borderRadius: "3px",
+                      border: "none",
+                      marginTop: "4px",
+                      fontSize: "12px",
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label
+                    style={{
+                      color: "#ffffff",
+                      fontSize: "12px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Tọa độ X:
+                  </label>
+                  <input
+                    type="number"
+                    value={selectedObj.x}
+                    onChange={(e) =>
+                      updateObject(selectedObj.id, {
+                        x: parseInt(e.target.value),
+                      })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "6px 8px",
+                      borderRadius: "3px",
+                      border: "none",
+                      marginTop: "4px",
+                      fontSize: "12px",
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label
+                    style={{
+                      color: "#ffffff",
+                      fontSize: "12px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Tọa độ Y:
+                  </label>
+                  <input
+                    type="number"
+                    value={selectedObj.y}
+                    onChange={(e) =>
+                      updateObject(selectedObj.id, {
+                        y: parseInt(e.target.value),
+                      })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "6px 8px",
+                      borderRadius: "3px",
+                      border: "none",
+                      marginTop: "4px",
+                      fontSize: "12px",
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label
+                    style={{
+                      color: "#ffffff",
+                      fontSize: "12px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Chiều rộng (mm):
+                  </label>
+                  <input
+                    type="number"
+                    value={selectedObj.width}
+                    onChange={(e) =>
+                      updateObject(selectedObj.id, {
+                        width: parseInt(e.target.value),
+                      })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "6px 8px",
+                      borderRadius: "3px",
+                      border: "none",
+                      marginTop: "4px",
+                      fontSize: "12px",
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label
+                    style={{
+                      color: "#ffffff",
+                      fontSize: "12px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Chiều cao (mm):
+                  </label>
+                  <input
+                    type="number"
+                    value={selectedObj.height}
+                    onChange={(e) =>
+                      updateObject(selectedObj.id, {
+                        height: parseInt(e.target.value),
+                      })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "6px 8px",
+                      borderRadius: "3px",
+                      border: "none",
+                      marginTop: "4px",
+                      fontSize: "12px",
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label
+                    style={{
+                      color: "#ffffff",
+                      fontSize: "12px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Màu nền:
+                  </label>
+                  <input
+                    type="color"
+                    value={selectedObj.fillColor}
+                    onChange={(e) =>
+                      updateObject(selectedObj.id, {
+                        fillColor: e.target.value,
+                      })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "6px 8px",
+                      borderRadius: "3px",
+                      border: "none",
+                      marginTop: "4px",
+                      cursor: "pointer",
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    style={{
+                      color: "#ffffff",
+                      fontSize: "12px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Khóa:
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={selectedObj.locked}
+                    onChange={(e) =>
+                      updateObject(selectedObj.id, { locked: e.target.checked })
+                    }
+                    style={{ marginTop: "4px", cursor: "pointer" }}
+                  />
+                </div>
+              </div>
             ) : (
-              <div style={{ textAlign: "center", color: "#666", fontSize: 11 }}>
-                <p>No object selected</p>
-                <p style={{ fontSize: 10 }}>
-                  Click on an object to view properties
-                </p>
+              <div
+                style={{
+                  color: "#999999",
+                  fontSize: "12px",
+                  textAlign: "center",
+                  marginTop: "20px",
+                }}
+              >
+                Chọn đối tượng để xem thuộc tính
               </div>
             )}
-          </div>
+          </>
         )}
 
-        {activeTab === "layers" && (
-          <div style={{ color: "#888", fontSize: 11 }}>
-            <p>Layers panel - Coming soon</p>
-          </div>
-        )}
-
+        {/* BOM Tab */}
         {activeTab === "bom" && (
-          <div style={{ color: "#888", fontSize: 11 }}>
-            <p>BOM panel - Coming soon</p>
+          <div>
+            <div
+              style={{
+                marginBottom: "12px",
+                color: "#BA00AE",
+                fontWeight: 600,
+                fontSize: "14px",
+              }}
+            >
+              📦 Bảng vật tư (BOM)
+            </div>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: "11px",
+              }}
+            >
+              <thead>
+                <tr style={{ backgroundColor: "rgba(186, 0, 174, 0.1)" }}>
+                  <th
+                    style={{
+                      padding: "6px",
+                      textAlign: "left",
+                      color: "#fff",
+                      borderBottom: "1px solid #444",
+                    }}
+                  >
+                    Tên
+                  </th>
+                  <th
+                    style={{
+                      padding: "6px",
+                      textAlign: "right",
+                      color: "#fff",
+                      borderBottom: "1px solid #444",
+                    }}
+                  >
+                    SL
+                  </th>
+                  <th
+                    style={{
+                      padding: "6px",
+                      textAlign: "left",
+                      color: "#fff",
+                      borderBottom: "1px solid #444",
+                    }}
+                  >
+                    ĐVT
+                  </th>
+                  <th
+                    style={{
+                      padding: "6px",
+                      textAlign: "right",
+                      color: "#fff",
+                      borderBottom: "1px solid #444",
+                    }}
+                  >
+                    Đơn giá
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {bomItems.map((item) => (
+                  <tr key={item.id} style={{ borderBottom: "1px solid #333" }}>
+                    <td style={{ padding: "6px", color: "#ddd" }}>
+                      {item.name}
+                    </td>
+                    <td
+                      style={{
+                        padding: "6px",
+                        textAlign: "right",
+                        color: "#ddd",
+                      }}
+                    >
+                      {item.quantity}
+                    </td>
+                    <td style={{ padding: "6px", color: "#888" }}>
+                      {item.unit}
+                    </td>
+                    <td
+                      style={{
+                        padding: "6px",
+                        textAlign: "right",
+                        color: "#4CAF50",
+                      }}
+                    >
+                      {item.unitPrice.toLocaleString()}đ
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "8px",
+                backgroundColor: "rgba(76, 175, 80, 0.1)",
+                borderRadius: "4px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  color: "#fff",
+                  fontSize: "12px",
+                }}
+              >
+                <span>Tổng cộng:</span>
+                <span style={{ color: "#4CAF50", fontWeight: 600 }}>
+                  {bomItems
+                    .reduce(
+                      (sum, item) => sum + item.quantity * item.unitPrice,
+                      0
+                    )
+                    .toLocaleString()}
+                  đ
+                </span>
+              </div>
+            </div>
           </div>
         )}
+
+        {/* Layers Tab */}
+        {activeTab === "layers" && <LayerPanelConnected />}
       </div>
     </div>
   );

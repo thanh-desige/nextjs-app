@@ -14,9 +14,13 @@ import {
   EntityStyle,
   HitTestResult,
   GripPoint,
-  EntityType,
 } from "../entities/Entity.types";
-import { BaseEntity } from "../entities/BaseEntity";
+// BaseEntity import REMOVED — STEP-3.9 migration complete
+import {
+  getIEntityBounds,
+  iEntityContainsPoint,
+  getIEntityGripPoints,
+} from "../entities/EntityBridge";
 import {
   EngineState,
   ToolMode,
@@ -31,12 +35,13 @@ import {
   EngineEventType,
   EngineEventListener,
 } from "./EngineEvents";
-import { CadDocument, CanvasEntity } from "../document/CadDocument";
+import { CadDocument } from "../document/CadDocument";
 import {
   ICommand,
   CommandResult,
   CommandContext,
 } from "../commands/Command.types";
+import { convertIEntityToCanvasEntity } from "./entityCanvasConverter";
 
 // ==================== CAD Engine Class ====================
 
@@ -95,21 +100,21 @@ export class CadEngine {
 
   on<T extends EngineEventType>(
     event: T,
-    listener: EngineEventListener<T>
+    listener: EngineEventListener<T>,
   ): () => void {
     return this.events.on(event, listener);
   }
 
   off<T extends EngineEventType>(
     event: T,
-    listener: EngineEventListener<T>
+    listener: EngineEventListener<T>,
   ): void {
     this.events.off(event, listener);
   }
 
   private emit<T extends EngineEventType>(
     event: T,
-    payload: Parameters<EngineEventListener<T>>[0]
+    payload: Parameters<EngineEventListener<T>>[0],
   ): void {
     this.events.emit(event, payload);
   }
@@ -187,7 +192,7 @@ export class CadEngine {
     const previousZoom = this.state.viewport.zoom;
     this.state.viewport.zoom = Math.max(
       0.0001,
-      Math.min(100000, this.state.viewport.zoom * factor)
+      Math.min(100000, this.state.viewport.zoom * factor),
     );
 
     // Update matrices
@@ -226,7 +231,7 @@ export class CadEngine {
     this.state.viewport.zoom = Math.min(scaleX, scaleY);
     this.state.viewport.center.set(
       (bounds.min.x + bounds.max.x) / 2,
-      (bounds.min.y + bounds.max.y) / 2
+      (bounds.min.y + bounds.max.y) / 2,
     );
 
     this.updateTransformMatrices();
@@ -300,6 +305,14 @@ export class CadEngine {
 
   addEntity(entity: IEntity): void {
     this.entities.set(entity.id, entity);
+
+    // Also add to CadDocument storages for proper sync
+    this.document.addEntity(entity);
+    const canvasEntity = convertIEntityToCanvasEntity(entity);
+    if (canvasEntity) {
+      this.document.addCanvasEntity(canvasEntity);
+    }
+
     this.state.isDirty = true;
     this.emit(EngineEventType.ENTITY_ADDED, { entity });
     this.emit(EngineEventType.DOCUMENT_MODIFIED, undefined);
@@ -309,6 +322,13 @@ export class CadEngine {
   addEntities(entities: IEntity[]): void {
     for (const entity of entities) {
       this.entities.set(entity.id, entity);
+
+      // Also add to CadDocument storages for proper sync
+      this.document.addEntity(entity);
+      const canvasEntity = convertIEntityToCanvasEntity(entity);
+      if (canvasEntity) {
+        this.document.addCanvasEntity(canvasEntity);
+      }
     }
     this.state.isDirty = true;
     this.emit(EngineEventType.ENTITY_ADDED, { entity: entities[0], entities });
@@ -325,6 +345,12 @@ export class CadEngine {
         this.state.selection.hoveredId = null;
       }
       this.state.isDirty = true;
+
+      // Also remove from CadDocument's CanvasEntity storage
+      // This ensures undo for RECT/CIRCLE/ARC works properly
+      this.document.removeEntity(entityId);
+      this.document.deleteCanvasEntity(entityId);
+
       this.emit(EngineEventType.ENTITY_REMOVED, { entity });
       this.emit(EngineEventType.DOCUMENT_MODIFIED, undefined);
       this.requestRender();
@@ -340,6 +366,24 @@ export class CadEngine {
 
   getEntity(entityId: string): IEntity | undefined {
     return this.entities.get(entityId);
+  }
+
+  /**
+   * STEP-3.9: Replace an entity in-place with a new data object.
+   * Used by commands after immutable transforms via EntityRegistry.
+   */
+  updateEntity(entityId: string, newEntity: IEntity): void {
+    if (!this.entities.has(entityId)) return;
+    this.entities.set(entityId, newEntity);
+
+    // Sync with CadDocument
+    const canvasEntity = convertIEntityToCanvasEntity(newEntity);
+    if (canvasEntity) {
+      this.document.deleteCanvasEntity(entityId);
+      this.document.addCanvasEntity(canvasEntity);
+    }
+
+    this.state.isDirty = true;
   }
 
   getAllEntities(): IEntity[] {
@@ -373,7 +417,7 @@ export class CadEngine {
       maxY = -Infinity;
 
     for (const entity of entities) {
-      const bounds = entity.getBounds();
+      const bounds = getIEntityBounds(entity);
       if (bounds.min.x < minX) minX = bounds.min.x;
       if (bounds.min.y < minY) minY = bounds.min.y;
       if (bounds.max.x > maxX) maxX = bounds.max.x;
@@ -403,11 +447,11 @@ export class CadEngine {
     const previousIds = Array.from(this.state.selection.selectedIds);
 
     if (!addToSelection) {
-      // Deselect all current
+      // Deselect all current — state managed via selectedIds Set
       for (const id of this.state.selection.selectedIds) {
         const entity = this.entities.get(id);
-        if (entity && "deselect" in entity) {
-          (entity as BaseEntity).deselect();
+        if (entity) {
+          entity.state.selected = false;
         }
       }
       this.state.selection.selectedIds.clear();
@@ -418,9 +462,7 @@ export class CadEngine {
       const entity = this.entities.get(id);
       if (entity) {
         this.state.selection.selectedIds.add(id);
-        if ("select" in entity) {
-          (entity as BaseEntity).select();
-        }
+        entity.state.selected = true;
       }
     }
 
@@ -450,8 +492,8 @@ export class CadEngine {
     for (const id of ids) {
       this.state.selection.selectedIds.delete(id);
       const entity = this.entities.get(id);
-      if (entity && "deselect" in entity) {
-        (entity as BaseEntity).deselect();
+      if (entity) {
+        entity.state.selected = false;
       }
     }
 
@@ -468,8 +510,8 @@ export class CadEngine {
   clearSelection(): void {
     for (const id of this.state.selection.selectedIds) {
       const entity = this.entities.get(id);
-      if (entity && "deselect" in entity) {
-        (entity as BaseEntity).deselect();
+      if (entity) {
+        entity.state.selected = false;
       }
     }
     this.state.selection.selectedIds.clear();
@@ -486,7 +528,7 @@ export class CadEngine {
     const toSelect: string[] = [];
 
     for (const entity of this.getVisibleEntities()) {
-      const entityBounds = entity.getBounds();
+      const entityBounds = getIEntityBounds(entity);
 
       if (mode === SelectionMode.WINDOW) {
         // Phải nằm hoàn toàn trong box
@@ -520,15 +562,15 @@ export class CadEngine {
 
     for (const entity of entities) {
       // Quick bounds check
-      const bounds = entity.getBounds();
+      const bounds = getIEntityBounds(entity);
       const expandedBounds: BoundingBox = {
         min: new Vec2(
           bounds.min.x - worldTolerance,
-          bounds.min.y - worldTolerance
+          bounds.min.y - worldTolerance,
         ),
         max: new Vec2(
           bounds.max.x + worldTolerance,
-          bounds.max.y + worldTolerance
+          bounds.max.y + worldTolerance,
         ),
       };
 
@@ -537,7 +579,7 @@ export class CadEngine {
       }
 
       // Detailed test
-      if (entity.containsPoint(worldPoint, worldTolerance)) {
+      if (iEntityContainsPoint(entity, worldPoint, worldTolerance)) {
         return {
           hit: true,
           entity,
@@ -554,14 +596,21 @@ export class CadEngine {
     const worldTolerance = tolerance / this.state.viewport.zoom;
 
     for (const entity of this.getSelectedEntities()) {
-      if ("getGripPoints" in entity) {
-        const grips = (entity as BaseEntity).getGripPoints();
+      try {
+        const grips = getIEntityGripPoints(entity);
         for (const grip of grips) {
           const dist = Vec2.from(grip.position).distanceTo(worldPoint);
           if (dist <= worldTolerance) {
-            return grip;
+            return {
+              position: grip.position,
+              type: grip.type as unknown as import("../entities/Entity.types").GripType,
+              entityId: entity.id,
+              index: grip.index,
+            };
           }
         }
+      } catch {
+        // Entity type not registered in EntityRegistry, skip
       }
     }
 
@@ -578,16 +627,16 @@ export class CadEngine {
     // Unhover previous
     if (previousId) {
       const prev = this.entities.get(previousId);
-      if (prev && "unhover" in prev) {
-        (prev as BaseEntity).unhover();
+      if (prev) {
+        prev.state.hovered = false;
       }
     }
 
     // Hover new
     if (entityId) {
       const entity = this.entities.get(entityId);
-      if (entity && "hover" in entity) {
-        (entity as BaseEntity).hover();
+      if (entity) {
+        entity.state.hovered = true;
       }
     }
 
@@ -721,151 +770,7 @@ export class CadEngine {
 
   // ==================== ĐIỀU KIỆN 1: Command Execution ====================
 
-  /**
-   * Convert IEntity to CanvasEntity format for UI rendering
-   * This bridges the gap between core entities and canvas entities
-   */
-  private convertToCanvasEntity(entity: IEntity): CanvasEntity | null {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const e = entity as any;
-
-    // Map EntityType to canvas type string
-    // Based on Entity.types.ts: LINE, RECT, CIRCLE, ARC, ELLIPSE, POLYLINE, TEXT, DIMENSION, BLOCK_REF, GROUP, IMAGE, HATCH
-    const typeMap: Record<EntityType, CanvasEntity["type"]> = {
-      [EntityType.LINE]: "line",
-      [EntityType.POLYLINE]: "polyline",
-      [EntityType.RECT]: "rect",
-      [EntityType.CIRCLE]: "circle",
-      [EntityType.ARC]: "arc",
-      [EntityType.ELLIPSE]: "ellipse",
-      [EntityType.TEXT]: "text",
-      [EntityType.HATCH]: "polyline",
-      [EntityType.DIMENSION]: "line",
-      [EntityType.BLOCK_REF]: "line",
-      [EntityType.IMAGE]: "rect",
-      [EntityType.GROUP]: "line",
-    };
-
-    // Get points from entity based on type
-    let points: { x: number; y: number }[] = [];
-
-    // Handle specific entity types
-    switch (entity.type) {
-      case EntityType.LINE:
-        if (e.start && e.end) {
-          points = [
-            { x: e.start.x, y: e.start.y },
-            { x: e.end.x, y: e.end.y },
-          ];
-        }
-        break;
-
-      case EntityType.RECT:
-        // RectEntity has origin, width, height - use 2 opposite corners for CadDrawingCanvas
-        // CadDrawingCanvas expects points[0] = origin, points[1] = opposite corner
-        if (e.origin && e.width !== undefined && e.height !== undefined) {
-          const ox = e.origin.x;
-          const oy = e.origin.y;
-          points = [
-            { x: ox, y: oy },
-            { x: ox + e.width, y: oy + e.height },
-          ];
-        }
-        break;
-
-      case EntityType.CIRCLE:
-        // CircleEntity has center, radius
-        if (e.center && e.radius !== undefined) {
-          points = [
-            { x: e.center.x, y: e.center.y },
-            { x: e.radius, y: 0 }, // radius stored in x
-          ];
-        }
-        break;
-
-      case EntityType.ARC:
-        // ArcEntity has center, radius, startAngle, endAngle
-        if (e.center && e.radius !== undefined) {
-          points = [
-            { x: e.center.x, y: e.center.y },
-            { x: e.radius, y: 0 },
-          ];
-        }
-        break;
-
-      case EntityType.ELLIPSE:
-        // EllipseEntity has center, radiusX, radiusY, rotation
-        if (e.center) {
-          points = [
-            { x: e.center.x, y: e.center.y },
-            { x: e.radiusX || 0, y: e.radiusY || 0 },
-          ];
-        }
-        break;
-
-      case EntityType.TEXT:
-        if (e.position) {
-          points = [{ x: e.position.x, y: e.position.y }];
-        }
-        break;
-
-      case EntityType.POLYLINE:
-        if (typeof e.getPoints === "function") {
-          points = e.getPoints();
-        } else if (e.points) {
-          points = e.points;
-        }
-        break;
-
-      default:
-        // Generic fallback
-        if (typeof e.getPoints === "function") {
-          points = e.getPoints();
-        } else if (e.points) {
-          points = e.points;
-        }
-        break;
-    }
-
-    // Build base canvas entity
-    const canvasEntity: CanvasEntity = {
-      id: entity.id,
-      type: typeMap[entity.type] || "line",
-      points,
-      color: entity.style?.strokeColor || "#FFFFFF",
-      lineWidth: entity.style?.strokeWidth || 1,
-      strokeStyle:
-        (entity.style?.strokeStyle as
-          | "solid"
-          | "dashed"
-          | "dotted"
-          | "dashdot") || "solid",
-      fillColor: entity.style?.fillColor || null,
-      fillOpacity: entity.style?.opacity ?? 0.5,
-      opacity: entity.style?.opacity ?? 1,
-      layer: entity.layerId,
-    };
-
-    // Add type-specific properties
-    if (entity.type === EntityType.ARC) {
-      canvasEntity.startAngle = e.startAngle;
-      canvasEntity.endAngle = e.endAngle;
-    }
-
-    if (entity.type === EntityType.ELLIPSE) {
-      canvasEntity.radiusX = e.radiusX;
-      canvasEntity.radiusY = e.radiusY;
-      canvasEntity.rotation = e.rotation;
-    }
-
-    if (entity.type === EntityType.TEXT) {
-      canvasEntity.text = e.content || e.text || "";
-      canvasEntity.fontSize = e.fontSize;
-      canvasEntity.fontFamily = e.fontFamily;
-    }
-
-    return canvasEntity;
-  }
+  // ==================== ĐIỀU KIỆN 1: Command Execution ====================
 
   /**
    * Execute a command with proper context
@@ -889,15 +794,8 @@ export class CadEngine {
       // Add created entities to document (both IEntity and CanvasEntity)
       if (result.entities && result.entities.length > 0) {
         for (const entity of result.entities) {
-          // Add to IEntity storage
-          this.document.addEntity(entity);
+          // addEntity() now handles syncing to both IEntity and CanvasEntity storages
           this.addEntity(entity);
-
-          // Also add to CanvasEntity storage for UI rendering
-          const canvasEntity = this.convertToCanvasEntity(entity);
-          if (canvasEntity) {
-            this.document.addCanvasEntity(canvasEntity);
-          }
         }
       }
 
@@ -919,7 +817,7 @@ export class CadEngine {
    */
   executeInteractiveCommand(
     command: ICommand,
-    providedContext: Partial<CommandContext>
+    providedContext: Partial<CommandContext>,
   ): CommandResult {
     // Merge provided context with engine defaults
     const context: CommandContext & { document: CadDocument } = {
@@ -938,16 +836,8 @@ export class CadEngine {
       // Add created entities to document (both IEntity and CanvasEntity)
       if (result.entities && result.entities.length > 0) {
         for (const entity of result.entities) {
-          // Add to IEntity storage
-          this.document.addEntity(entity);
+          // addEntity() now handles syncing to both IEntity and CanvasEntity storages
           this.addEntity(entity);
-
-          // Also add to CanvasEntity storage for UI rendering
-          const canvasEntity = this.convertToCanvasEntity(entity);
-
-          if (canvasEntity) {
-            this.document.addCanvasEntity(canvasEntity);
-          }
         }
       }
 

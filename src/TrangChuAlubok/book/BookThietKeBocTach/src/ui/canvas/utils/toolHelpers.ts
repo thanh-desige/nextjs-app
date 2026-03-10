@@ -56,6 +56,7 @@ export function getToolType(
     case ToolMode.EXTEND:
     case ToolMode.OFFSET:
     case ToolMode.FILLET:
+    case ToolMode.BOUNDARY:
       return "modify";
     default:
       return null;
@@ -138,6 +139,7 @@ export function getCursor(
     case ToolMode.DRAW_QDIM:
     case ToolMode.DRAW_DIMCONTINUE:
     case ToolMode.DRAW_DIMARC:
+    case ToolMode.BOUNDARY:
       return "crosshair";
     default:
       return "default";

@@ -1,428 +1,502 @@
 "use client";
-import React, { useState, useEffect, useCallback, useRef } from "react";
 
-interface LibraryItem {
+import React, { useRef, useState, useEffect } from "react";
+
+// ==================== COLORS ====================
+const COLORS = {
+  border: "#3a3a3a",
+  hoverBg: "rgba(155, 89, 182, 0.3)",
+  categoryText: "#ffffff",
+  subCategoryText: "#cccccc",
+};
+
+// ==================== INTERFACES ====================
+interface LibrarySubCategory {
+  id: string;
+  name: string;
+  category: "door" | "window";
+  icon?: string;
+}
+
+interface LibraryCategory {
   id: string;
   name: string;
   icon: string;
-  category: string;
+  subCategories: LibrarySubCategory[];
 }
 
 interface SidebarLeftProps {
-  isCollapsed?: boolean;
   onToggle?: () => void;
-  onItemSelect?: (item: LibraryItem) => void;
+  onOpenTemplateOverlay?: (
+    category: "door" | "window",
+    subCategory: string
+  ) => void;
 }
 
-const libraryCategories = [
-  {
-    id: "doors",
-    label: "🚪 Cửa",
-    items: [
-      { id: "door-single", name: "Cửa đơn", icon: "🚪", category: "doors" },
-      { id: "door-double", name: "Cửa đôi", icon: "🚪", category: "doors" },
-      { id: "door-sliding", name: "Cửa trượt", icon: "🚪", category: "doors" },
-    ],
-  },
-  {
-    id: "windows",
-    label: "🪟 Cửa sổ",
-    items: [
-      {
-        id: "window-fixed",
-        name: "Cửa sổ cố định",
-        icon: "🪟",
-        category: "windows",
-      },
-      {
-        id: "window-casement",
-        name: "Cửa sổ mở",
-        icon: "🪟",
-        category: "windows",
-      },
-    ],
-  },
-  {
-    id: "frames",
-    label: "📐 Khung",
-    items: [
-      {
-        id: "frame-aluminum",
-        name: "Khung nhôm",
-        icon: "📐",
-        category: "frames",
-      },
-      { id: "frame-steel", name: "Khung thép", icon: "📐", category: "frames" },
-    ],
-  },
-  {
-    id: "glass",
-    label: "🔲 Kính",
-    items: [
-      { id: "glass-clear", name: "Kính trong", icon: "🔲", category: "glass" },
-      { id: "glass-tinted", name: "Kính màu", icon: "🔲", category: "glass" },
-      {
-        id: "glass-tempered",
-        name: "Kính cường lực",
-        icon: "🔲",
-        category: "glass",
-      },
-    ],
-  },
-];
-
+// ==================== COMPONENT ====================
 export default function SidebarLeft({
-  isCollapsed = false,
   onToggle,
-  onItemSelect,
-}: SidebarLeftProps): React.ReactElement {
-  const [width, setWidth] = useState(200);
-  const [expandedCategories, setExpandedCategories] = useState<string[]>([
-    "doors",
-  ]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const isCollapsedRef = useRef(isCollapsed);
-  const onToggleRef = useRef(onToggle);
+  onOpenTemplateOverlay,
+}: SidebarLeftProps) {
+  // ==================== STATE ====================
+  const [width, setWidth] = useState(250);
+  const [isResizing, setIsResizing] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(
+    "doors"
+  );
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
-  // Keep refs in sync
-  useEffect(() => {
-    isCollapsedRef.current = isCollapsed;
-    onToggleRef.current = onToggle;
-  }, [isCollapsed, onToggle]);
+  // ==================== RESIZE LOGIC ====================
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
 
-  // Responsive check
   useEffect(() => {
-    const checkMobile = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      // Auto collapse on mobile
-      if (mobile && !isCollapsedRef.current) {
-        onToggleRef.current?.();
-      }
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const newWidth = Math.max(48, Math.min(400, e.clientX));
+      setWidth(newWidth);
+      setCollapsed(newWidth < 120);
     };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
-  const toggleCategory = (categoryId: string) => {
-    setExpandedCategories((prev) =>
-      prev.includes(categoryId)
-        ? prev.filter((id) => id !== categoryId)
-        : [...prev, categoryId]
-    );
-  };
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
 
-  const handleMouseDown = () => {
-    if (!isMobile) setIsDragging(true);
-  };
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    const newWidth = Math.min(Math.max(e.clientX, 48), 300);
-    setWidth(newWidth);
-  }, []);
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
     }
+
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isResizing]);
 
-  // Collapsed state
-  if (isCollapsed) {
-    return (
-      <div
-        style={{
-          width: isMobile ? 40 : 32,
-          backgroundColor: "#1e1e2e",
-          borderRight: "1px solid #333",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          paddingTop: 8,
-          zIndex: 100,
-          position: "relative",
-        }}
-      >
-        {/* Expand button at middle right edge */}
-        {!isMobile && onToggle && (
-          <button
-            onClick={onToggle}
-            style={{
-              position: "absolute",
-              right: -12,
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: 24,
-              height: 24,
-              borderRadius: "50%",
-              background: "#1e1e2e",
-              border: "1px solid #444",
-              color: "#888",
-              cursor: "pointer",
-              fontSize: 10,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 20,
-              boxShadow: "2px 0 8px rgba(0,0,0,0.3)",
-            }}
-            title="Expand Library"
-          >
-            ▶
-          </button>
-        )}
+  // ==================== CATEGORIES DATA ====================
+  const categories: LibraryCategory[] = [
+    {
+      id: "doors",
+      name: "Cửa đi",
+      icon: "🚪",
+      subCategories: [
+        {
+          id: "door-hinged",
+          name: "Cửa mở quay",
+          category: "door",
+          icon: "↩️",
+        },
+        {
+          id: "door-sliding",
+          name: "Cửa mở trượt",
+          category: "door",
+          icon: "↔️",
+        },
+        { id: "door-folding", name: "Cửa gấp", category: "door", icon: "📖" },
+      ],
+    },
+    {
+      id: "windows",
+      name: "Cửa sổ",
+      icon: "🪟",
+      subCategories: [
+        {
+          id: "window-casement",
+          name: "Cửa sổ mở quay",
+          category: "window",
+          icon: "↩️",
+        },
+        {
+          id: "window-sliding",
+          name: "Cửa sổ mở trượt",
+          category: "window",
+          icon: "↔️",
+        },
+        {
+          id: "window-awning",
+          name: "Cửa sổ hất",
+          category: "window",
+          icon: "⬆️",
+        },
+        {
+          id: "window-fixed",
+          name: "Cửa sổ cố định",
+          category: "window",
+          icon: "🔲",
+        },
+      ],
+    },
+    {
+      id: "walls",
+      name: "Vách kính",
+      icon: "▥",
+      subCategories: [],
+    },
+    {
+      id: "accessories",
+      name: "Phụ kiện",
+      icon: "🔧",
+      subCategories: [],
+    },
+  ];
 
-        {/* Mobile expand button */}
-        {isMobile && (
-          <button
-            onClick={onToggle}
-            style={{
-              width: 32,
-              height: 32,
-              background: "transparent",
-              border: "none",
-              color: "#888",
-              cursor: "pointer",
-              fontSize: 16,
-            }}
-            title="Expand Library"
-          >
-            ▶
-          </button>
-        )}
-        {/* Quick access icons on mobile */}
-        {isMobile && (
-          <div
-            style={{
-              marginTop: 16,
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
-            {libraryCategories.slice(0, 4).map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => {
-                  onToggle?.();
-                  setExpandedCategories([cat.id]);
-                }}
-                style={{
-                  width: 32,
-                  height: 32,
-                  background: "transparent",
-                  border: "none",
-                  fontSize: 16,
-                  cursor: "pointer",
-                }}
-                title={cat.label}
-              >
-                {cat.label.split(" ")[0]}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
+  // ==================== CLICK HANDLER ====================
+  const handleSubCategoryClick = (subCat: LibrarySubCategory) => {
+    if (onOpenTemplateOverlay) {
+      onOpenTemplateOverlay(subCat.category, subCat.name);
+    }
+  };
 
-  // Expanded state
-  const actualWidth = isMobile ? "100%" : width;
-  const maxWidthValue = isMobile ? "80vw" : 300;
-
+  // ==================== RENDER ====================
   return (
     <div
+      ref={sidebarRef}
       style={{
-        width: actualWidth,
-        minWidth: isMobile ? 200 : 48,
-        maxWidth: maxWidthValue,
-        backgroundColor: "#1e1e2e",
-        borderRight: "1px solid #333",
+        width: `${width}px`,
+        height: "100%",
+        backgroundColor: "#252526",
+        borderRight: `1px solid ${COLORS.border}`,
         display: "flex",
         flexDirection: "column",
-        position: isMobile ? "absolute" : "relative",
-        left: 0,
-        top: 0,
-        bottom: 0,
-        zIndex: isMobile ? 1000 : 10,
-        boxShadow: isMobile ? "4px 0 20px rgba(0,0,0,0.5)" : "none",
+        overflow: "hidden",
+        position: "relative",
+        transition: isResizing ? "none" : "width 0.3s ease",
+        userSelect: "none",
       }}
     >
-      {/* Mobile overlay backdrop */}
-      {isMobile && (
-        <div
-          onClick={onToggle}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.5)",
-            zIndex: -1,
-          }}
-        />
-      )}
-
-      {/* Header */}
+      {/* Resize Handle */}
       <div
+        onMouseDown={handleMouseDown}
         style={{
-          padding: isMobile ? "12px 16px" : "8px 12px",
-          borderBottom: "1px solid #333",
+          position: "absolute",
+          right: 0,
+          top: 0,
+          width: "6px",
+          height: "100%",
+          cursor: "col-resize",
+          backgroundColor: isResizing ? "rgba(255, 0, 0, 0.3)" : "transparent",
+          transition: "background-color 0.2s",
+          zIndex: 1000,
+        }}
+        onMouseEnter={(e) => {
+          if (!isResizing)
+            e.currentTarget.style.backgroundColor = "rgba(255, 0, 0, 0.2)";
+        }}
+        onMouseLeave={(e) => {
+          if (!isResizing)
+            e.currentTarget.style.backgroundColor = "transparent";
+        }}
+      />
+
+      {/* Collapse Button */}
+      <div
+        onClick={() => {
+          setCollapsed(!collapsed);
+          setWidth(collapsed ? 250 : 48);
+        }}
+        style={{
+          width: "24px",
+          height: "24px",
+          backgroundColor: "#1e1e2e",
+          borderRadius: "50%",
+          position: "absolute",
+          top: "50%",
+          right: "-12px",
+          transform: "translateY(-50%)",
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          border: `1px solid #444`,
+          transition: "all 0.2s ease",
+          zIndex: 999,
+          boxShadow: "2px 0 8px rgba(0,0,0,0.3)",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = "#2a2a3e";
+          e.currentTarget.style.borderColor = "#666";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = "#1e1e2e";
+          e.currentTarget.style.borderColor = "#444";
         }}
       >
-        <span
-          style={{
-            fontSize: isMobile ? 14 : 12,
-            fontWeight: "bold",
-            color: "#ddd",
-          }}
-        >
-          📚 Library
+        <span style={{ color: "#888", fontSize: "10px" }}>
+          {collapsed ? "▶" : "◀"}
         </span>
-        <button
-          onClick={onToggle}
-          style={{
-            width: isMobile ? 28 : 20,
-            height: isMobile ? 28 : 20,
-            background: "transparent",
-            border: "none",
-            color: "#888",
-            cursor: "pointer",
-            fontSize: isMobile ? 14 : 10,
-          }}
-          title="Collapse"
-        >
-          ✕
-        </button>
       </div>
 
-      {/* Categories */}
-      <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? 12 : 8 }}>
-        {libraryCategories.map((category) => (
-          <div key={category.id} style={{ marginBottom: isMobile ? 12 : 8 }}>
-            <button
-              onClick={() => toggleCategory(category.id)}
-              style={{
-                width: "100%",
-                padding: isMobile ? "10px 12px" : "6px 8px",
-                background: "#252535",
-                border: "none",
-                borderRadius: 4,
-                color: "#ddd",
-                fontSize: isMobile ? 13 : 11,
-                cursor: "pointer",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <span>{category.label}</span>
-              <span>
-                {expandedCategories.includes(category.id) ? "▼" : "▶"}
-              </span>
-            </button>
-            {expandedCategories.includes(category.id) && (
-              <div
+      {/* ==================== EXPANDED VIEW ==================== */}
+      {!collapsed && (
+        <>
+          {/* Header */}
+          <div
+            style={{
+              padding: "12px",
+              borderBottom: `1px solid ${COLORS.border}`,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              color: "#BA00AE",
+              fontWeight: 500,
+              fontSize: "18px",
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+              📋 Thư viện
+            </span>
+            {onToggle && (
+              <button
+                onClick={onToggle}
                 style={{
-                  paddingLeft: isMobile ? 12 : 8,
-                  marginTop: isMobile ? 8 : 4,
+                  background: "none",
+                  border: "none",
+                  color: "#888",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  flexShrink: 0,
                 }}
               >
-                {category.items.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => {
-                      onItemSelect?.(item);
-                      if (isMobile) onToggle?.();
-                    }}
-                    style={{
-                      padding: isMobile ? "8px 12px" : "4px 8px",
-                      marginBottom: isMobile ? 4 : 2,
-                      borderRadius: 3,
-                      cursor: "pointer",
-                      fontSize: isMobile ? 12 : 10,
-                      color: "#aaa",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: isMobile ? 10 : 6,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#333";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                    }}
-                  >
-                    <span style={{ fontSize: isMobile ? 16 : 12 }}>
-                      {item.icon}
-                    </span>
-                    <span>{item.name}</span>
-                  </div>
-                ))}
-              </div>
+                ✕
+              </button>
             )}
           </div>
-        ))}
-      </div>
 
-      {/* Resize Handle - only on desktop */}
-      {!isMobile && (
-        <div
-          onMouseDown={handleMouseDown}
-          style={{
-            position: "absolute",
-            right: 0,
-            top: 0,
-            bottom: 0,
-            width: 4,
-            cursor: "ew-resize",
-            background: isDragging ? "#4a90d9" : "transparent",
-          }}
-        />
+          {/* Categories List */}
+          <div style={{ flex: 1, overflowY: "auto" }}>
+            {categories.map((category) => (
+              <div key={category.id}>
+                {/* Category Header */}
+                <button
+                  onClick={() =>
+                    setExpandedCategory(
+                      expandedCategory === category.id ? null : category.id
+                    )
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    backgroundColor:
+                      expandedCategory === category.id
+                        ? "rgba(155, 89, 182, 0.15)"
+                        : "transparent",
+                    border: "none",
+                    color: COLORS.categoryText,
+                    textAlign: "left",
+                    cursor: "pointer",
+                    borderBottom: `1px solid rgba(0,0,0,0.1)`,
+                    fontSize: "15px",
+                    fontWeight: 500,
+                    transition: "background-color 0.2s",
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor =
+                      "rgba(155, 89, 182, 0.2)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor =
+                      expandedCategory === category.id
+                        ? "rgba(155, 89, 182, 0.15)"
+                        : "transparent")
+                  }
+                >
+                  <span
+                    style={{
+                      transform:
+                        expandedCategory === category.id
+                          ? "rotate(90deg)"
+                          : "rotate(0deg)",
+                      transition: "transform 0.2s",
+                      display: "inline-block",
+                      fontSize: "10px",
+                    }}
+                  >
+                    ▶
+                  </span>
+                  <span>{category.icon}</span>
+                  <span>{category.name}</span>
+                  {category.subCategories.length > 0 && (
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        fontSize: "11px",
+                        color: "#666",
+                        backgroundColor: "rgba(0,0,0,0.2)",
+                        padding: "2px 6px",
+                        borderRadius: "10px",
+                      }}
+                    >
+                      {category.subCategories.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* SubCategories - CLICKABLE */}
+                {expandedCategory === category.id && (
+                  <div style={{ backgroundColor: "rgba(0,0,0,0.15)" }}>
+                    {category.subCategories.map((subCat) => (
+                      <div
+                        key={subCat.id}
+                        onClick={() => handleSubCategoryClick(subCat)}
+                        style={{
+                          padding: "10px 16px 10px 36px",
+                          color: COLORS.subCategoryText,
+                          fontSize: "13px",
+                          cursor: "pointer",
+                          borderBottom: `1px solid rgba(0,0,0,0.05)`,
+                          transition: "all 0.15s ease",
+                          overflow: "hidden",
+                          whiteSpace: "nowrap",
+                          textOverflow: "ellipsis",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor =
+                            COLORS.hoverBg;
+                          e.currentTarget.style.paddingLeft = "40px";
+                          e.currentTarget.style.color = "#ffffff";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "transparent";
+                          e.currentTarget.style.paddingLeft = "36px";
+                          e.currentTarget.style.color = COLORS.subCategoryText;
+                        }}
+                      >
+                        <span style={{ fontSize: "14px" }}>
+                          {subCat.icon || "📁"}
+                        </span>
+                        <span>{subCat.name}</span>
+                        <span
+                          style={{
+                            marginLeft: "auto",
+                            fontSize: "11px",
+                            color: "#666",
+                          }}
+                        >
+                          → Xem mẫu
+                        </span>
+                      </div>
+                    ))}
+                    {category.subCategories.length === 0 && (
+                      <div
+                        style={{
+                          padding: "12px 36px",
+                          color: "#555",
+                          fontSize: "12px",
+                          fontStyle: "italic",
+                        }}
+                      >
+                        Chưa có mẫu
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Footer hint */}
+          <div
+            style={{
+              padding: "10px 12px",
+              borderTop: `1px solid ${COLORS.border}`,
+              fontSize: "11px",
+              color: "#666",
+              textAlign: "center",
+            }}
+          >
+            💡 Click danh mục để xem mẫu
+          </div>
+        </>
       )}
 
-      {/* Collapse button - positioned at middle right edge */}
-      {!isMobile && onToggle && (
-        <button
-          onClick={onToggle}
-          style={{
-            position: "absolute",
-            right: -12,
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: 24,
-            height: 24,
-            borderRadius: "50%",
-            background: "#1e1e2e",
-            border: "1px solid #444",
-            color: "#888",
-            cursor: "pointer",
-            fontSize: 10,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 20,
-            boxShadow: "2px 0 8px rgba(0,0,0,0.3)",
-          }}
-          title="Collapse Library"
-        >
-          ◀
-        </button>
+      {/* ==================== COLLAPSED VIEW ==================== */}
+      {collapsed && (
+        <>
+          {/* Header Icon */}
+          <div
+            style={{
+              padding: "12px",
+              borderBottom: `1px solid ${COLORS.border}`,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              fontSize: "20px",
+              minHeight: "45px",
+              flexShrink: 0,
+            }}
+            title="Thư viện"
+          >
+            📋
+          </div>
+
+          {/* Category Icons */}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              paddingTop: "12px",
+              gap: "8px",
+              overflowY: "auto",
+            }}
+          >
+            {categories.map((category) => (
+              <div
+                key={category.id}
+                onClick={() => {
+                  // Expand sidebar and show category
+                  setCollapsed(false);
+                  setWidth(250);
+                  setExpandedCategory(category.id);
+                }}
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  backgroundColor:
+                    expandedCategory === category.id
+                      ? "rgba(155, 89, 182, 0.3)"
+                      : "transparent",
+                  transition: "all 0.2s",
+                  fontSize: "18px",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = COLORS.hoverBg;
+                  e.currentTarget.style.transform = "scale(1.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    expandedCategory === category.id
+                      ? "rgba(155, 89, 182, 0.3)"
+                      : "transparent";
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
+                title={category.name}
+              >
+                {category.icon}
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

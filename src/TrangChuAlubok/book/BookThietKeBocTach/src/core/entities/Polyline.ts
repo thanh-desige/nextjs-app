@@ -13,7 +13,11 @@ import {
   isPointInPolygon,
   midpoint,
 } from "../geometry/GeometryUtils";
-import { BaseEntity, createGripPoint } from "./BaseEntity";
+import {
+  initEntityBase,
+  createGripPoint,
+  serializeEntityBase,
+} from "./EntityBaseUtils";
 import {
   EntityType,
   EntityStyle,
@@ -23,8 +27,19 @@ import {
   IPolylineEntity,
 } from "./Entity.types";
 
-export class PolylineEntity extends BaseEntity implements IPolylineEntity {
+export class PolylineEntity implements IPolylineEntity {
+  public id: string;
   public readonly type = EntityType.POLYLINE;
+  public name?: string;
+  public layerId: string;
+  public style: EntityStyle;
+  public state: {
+    selected: boolean;
+    hovered: boolean;
+    visible: boolean;
+    locked: boolean;
+  };
+  public metadata?: Record<string, unknown>;
   public points: Vec2[];
   public closed: boolean;
 
@@ -36,9 +51,15 @@ export class PolylineEntity extends BaseEntity implements IPolylineEntity {
       layerId?: string;
       style?: Partial<EntityStyle>;
       closed?: boolean;
-    }
+    },
   ) {
-    super(options);
+    const base = initEntityBase(options);
+    this.id = base.id;
+    this.name = base.name;
+    this.layerId = base.layerId;
+    this.style = base.style;
+    this.state = base.state;
+    this.metadata = base.metadata;
     this.points = points.map((p) => Vec2.from(p));
     this.closed = options?.closed ?? false;
   }
@@ -48,7 +69,7 @@ export class PolylineEntity extends BaseEntity implements IPolylineEntity {
   static create(
     points: IVec2[],
     closed: boolean = false,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): PolylineEntity {
     return new PolylineEntity(points, { closed, style });
   }
@@ -57,7 +78,7 @@ export class PolylineEntity extends BaseEntity implements IPolylineEntity {
   static createRectangle(
     p1: IVec2,
     p2: IVec2,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): PolylineEntity {
     const points = [
       { x: p1.x, y: p1.y },
@@ -74,7 +95,7 @@ export class PolylineEntity extends BaseEntity implements IPolylineEntity {
     radius: number,
     sides: number,
     startAngle: number = 0,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): PolylineEntity {
     const points: IVec2[] = [];
     const angleStep = (Math.PI * 2) / sides;
@@ -158,9 +179,15 @@ export class PolylineEntity extends BaseEntity implements IPolylineEntity {
   clone(): PolylineEntity {
     const cloned = new PolylineEntity(
       this.points.map((p) => p.clone()),
-      { closed: this.closed }
+      {
+        closed: this.closed,
+        layerId: this.layerId,
+        style: { ...this.style },
+        name: this.name,
+      },
     );
-    cloned.copyBaseFrom(this);
+    cloned.state = { ...this.state };
+    cloned.metadata = this.metadata ? { ...this.metadata } : undefined;
     return cloned;
   }
 
@@ -207,8 +234,8 @@ export class PolylineEntity extends BaseEntity implements IPolylineEntity {
           midpoint(start, end),
           GripType.MIDPOINT,
           this.id,
-          this.points.length + i
-        )
+          this.points.length + i,
+        ),
       );
     }
 
@@ -292,7 +319,7 @@ export class PolylineEntity extends BaseEntity implements IPolylineEntity {
     if (maxDist > tolerance) {
       const left = this.douglasPeucker(
         points.slice(0, maxIndex + 1),
-        tolerance
+        tolerance,
       );
       const right = this.douglasPeucker(points.slice(maxIndex), tolerance);
       return [...left.slice(0, -1), ...right];
@@ -349,7 +376,7 @@ export class PolylineEntity extends BaseEntity implements IPolylineEntity {
 
   toJSON(): EntityJSON {
     return {
-      ...this.serializeBase(),
+      ...serializeEntityBase(this),
       type: this.type,
       points: this.points.map((p) => p.toObject()),
       closed: this.closed,

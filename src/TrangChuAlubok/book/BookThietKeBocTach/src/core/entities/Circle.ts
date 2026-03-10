@@ -8,7 +8,11 @@ import {
   distancePointToPoint,
   boundingBoxFromCircle,
 } from "../geometry/GeometryUtils";
-import { BaseEntity, createGripPoint } from "./BaseEntity";
+import {
+  initEntityBase,
+  createGripPoint,
+  serializeEntityBase,
+} from "./EntityBaseUtils";
 import {
   EntityType,
   EntityStyle,
@@ -18,8 +22,19 @@ import {
   ICircleEntity,
 } from "./Entity.types";
 
-export class CircleEntity extends BaseEntity implements ICircleEntity {
+export class CircleEntity implements ICircleEntity {
+  public id: string;
   public readonly type = EntityType.CIRCLE;
+  public name?: string;
+  public layerId: string;
+  public style: EntityStyle;
+  public state: {
+    selected: boolean;
+    hovered: boolean;
+    visible: boolean;
+    locked: boolean;
+  };
+  public metadata?: Record<string, unknown>;
   public center: Vec2;
   public radius: number;
 
@@ -31,9 +46,15 @@ export class CircleEntity extends BaseEntity implements ICircleEntity {
       name?: string;
       layerId?: string;
       style?: Partial<EntityStyle>;
-    }
+    },
   ) {
-    super(options);
+    const base = initEntityBase(options);
+    this.id = base.id;
+    this.name = base.name;
+    this.layerId = base.layerId;
+    this.style = base.style;
+    this.state = base.state;
+    this.metadata = base.metadata;
     this.center = Vec2.from(center);
     this.radius = Math.abs(radius);
   }
@@ -43,7 +64,7 @@ export class CircleEntity extends BaseEntity implements ICircleEntity {
   static create(
     center: IVec2,
     radius: number,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): CircleEntity {
     return new CircleEntity(center, radius, { style });
   }
@@ -52,7 +73,7 @@ export class CircleEntity extends BaseEntity implements ICircleEntity {
   static fromCenterAndPoint(
     center: IVec2,
     pointOnCircle: IVec2,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): CircleEntity {
     const radius = distancePointToPoint(center, pointOnCircle);
     return new CircleEntity(center, radius, { style });
@@ -62,7 +83,7 @@ export class CircleEntity extends BaseEntity implements ICircleEntity {
   static fromDiameter(
     p1: IVec2,
     p2: IVec2,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): CircleEntity {
     const center = new Vec2((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
     const radius = distancePointToPoint(p1, p2) / 2;
@@ -74,7 +95,7 @@ export class CircleEntity extends BaseEntity implements ICircleEntity {
     p1: IVec2,
     p2: IVec2,
     p3: IVec2,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): CircleEntity | null {
     // Tính tâm đường tròn ngoại tiếp
     const ax = p1.x,
@@ -112,7 +133,7 @@ export class CircleEntity extends BaseEntity implements ICircleEntity {
         name: json.name,
         layerId: json.layerId,
         style: json.style,
-      }
+      },
     );
     circle.metadata = json.metadata;
     return circle;
@@ -139,7 +160,7 @@ export class CircleEntity extends BaseEntity implements ICircleEntity {
   getPointAtAngle(angle: number): Vec2 {
     return new Vec2(
       this.center.x + this.radius * Math.cos(angle),
-      this.center.y + this.radius * Math.sin(angle)
+      this.center.y + this.radius * Math.sin(angle),
     );
   }
 
@@ -156,8 +177,13 @@ export class CircleEntity extends BaseEntity implements ICircleEntity {
   // ==================== BaseEntity Implementation ====================
 
   clone(): CircleEntity {
-    const cloned = new CircleEntity(this.center.clone(), this.radius);
-    cloned.copyBaseFrom(this);
+    const cloned = new CircleEntity(this.center.clone(), this.radius, {
+      layerId: this.layerId,
+      style: { ...this.style },
+      name: this.name,
+    });
+    cloned.state = { ...this.state };
+    cloned.metadata = this.metadata ? { ...this.metadata } : undefined;
     return cloned;
   }
 
@@ -241,7 +267,7 @@ export class CircleEntity extends BaseEntity implements ICircleEntity {
 
   toJSON(): EntityJSON {
     return {
-      ...this.serializeBase(),
+      ...serializeEntityBase(this),
       type: this.type,
       center: this.center.toObject(),
       radius: this.radius,

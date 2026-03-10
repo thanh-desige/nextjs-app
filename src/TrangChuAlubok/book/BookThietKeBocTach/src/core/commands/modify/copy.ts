@@ -1,11 +1,13 @@
 /**
  * COPY Command - Tạo bản sao của entities
+ *
+ * STEP-3.9: Uses EntityBridge for immutable clone + translate.
  */
 
 import { ICommand, CommandResult, CommandContext } from "../Command.types";
 import { Vec2, IVec2 } from "../../geometry/Vec2";
 import { IEntity } from "../../entities/Entity.types";
-import { BaseEntity } from "../../entities/BaseEntity";
+import { cloneIEntity, translateIEntity } from "../../entities/EntityBridge";
 
 interface CopyData {
   sourceEntityIds: string[];
@@ -20,7 +22,10 @@ export class CopyCommand implements ICommand {
 
   private data: CopyData | null = null;
 
-  constructor(private delta: IVec2, private entityIds?: string[]) {}
+  constructor(
+    private delta: IVec2,
+    private entityIds?: string[],
+  ) {}
 
   execute(context: CommandContext): CommandResult {
     // Lấy entities cần copy
@@ -41,19 +46,16 @@ export class CopyCommand implements ICommand {
       };
     }
 
-    // Tạo bản sao
+    // Tạo bản sao (immutable clone + translate)
     const newEntities: IEntity[] = [];
 
     for (const entity of entities) {
-      const baseEntity = entity as BaseEntity;
-      const copy = baseEntity.clone() as BaseEntity;
-
-      // Di chuyển bản sao
-      copy.translate(this.delta.x, this.delta.y);
+      const copy = cloneIEntity(entity);
+      const moved = translateIEntity(copy, this.delta.x, this.delta.y);
 
       // Thêm vào engine
-      context.engine.addEntity(copy);
-      newEntities.push(copy);
+      context.engine.addEntity(moved);
+      newEntities.push(moved);
     }
 
     // Lưu dữ liệu để undo
@@ -96,11 +98,14 @@ export class CopyCommand implements ICommand {
     const newEntities: IEntity[] = [];
 
     for (const entity of entities) {
-      const baseEntity = entity as BaseEntity;
-      const copy = baseEntity.clone() as BaseEntity;
-      copy.translate(this.data.delta.x, this.data.delta.y);
-      context.engine.addEntity(copy);
-      newEntities.push(copy);
+      const copy = cloneIEntity(entity);
+      const moved = translateIEntity(
+        copy,
+        this.data.delta.x,
+        this.data.delta.y,
+      );
+      context.engine.addEntity(moved);
+      newEntities.push(moved);
     }
 
     // Cập nhật data với new entity IDs
@@ -117,7 +122,7 @@ export class CopyCommand implements ICommand {
 export function createCopyCommand(
   basePoint: IVec2,
   destPoint: IVec2,
-  entityIds?: string[]
+  entityIds?: string[],
 ): CopyCommand {
   const base = Vec2.from(basePoint);
   const dest = Vec2.from(destPoint);

@@ -52,3 +52,73 @@ export type {
   UseDrawingCommandsReturn,
   DrawingState,
 } from "./useDrawingCommands";
+
+// Door Entities hooks (Kéo thả cửa)
+export { useDoorEntities } from "./useDoorEntities";
+
+// Drag & Drop hooks
+export {
+  useDragDrop,
+  useDragFromSidebar,
+  useDropOnCanvas,
+} from "./useDragDrop";
+export type { DragItem } from "./useDragDrop";
+
+// Page-level hooks (STEP-5.3: extracted from BookThietKeBocTachPage.tsx)
+export { useModifyCommands } from "./useModifyCommands";
+export type {
+  UseModifyCommandsParams,
+  UseModifyCommandsReturn,
+} from "./useModifyCommands";
+
+export { usePageCommands } from "./usePageCommands";
+export type {
+  UsePageCommandsParams,
+  UsePageCommandsReturn,
+} from "./usePageCommands";
+
+export { useKeyboardShortcuts } from "./useKeyboardShortcuts";
+export type { UseKeyboardShortcutsParams } from "./useKeyboardShortcuts";
+
+// Dimension sub-hooks (STEP-5.4: extracted from useDimensions.ts)
+export { useDimensionClick } from "./useDimensionClick";
+export type {
+  UseDimensionClickParams,
+  UseDimensionClickReturn,
+} from "./useDimensionClick";
+
+export { useDimensionPreview } from "./useDimensionPreview";
+export type {
+  UseDimensionPreviewParams,
+  UseDimensionPreviewReturn,
+} from "./useDimensionPreview";
+
+export { useDimensionQdim } from "./useDimensionQdim";
+export type {
+  UseDimensionQdimParams,
+  UseDimensionQdimReturn,
+} from "./useDimensionQdim";
+
+// Page sub-hooks (STEP-5.5: extracted from BookThietKeBocTachPage.tsx)
+export { useDoorHandlers } from "./useDoorHandlers";
+export type {
+  UseDoorHandlersParams,
+  UseDoorHandlersReturn,
+} from "./useDoorHandlers";
+
+export { useToolbar } from "./useToolbar";
+export type { UseToolbarParams, UseToolbarReturn } from "./useToolbar";
+
+export { useStyleHandlers } from "./useStyleHandlers";
+export type {
+  UseStyleHandlersParams,
+  UseStyleHandlersReturn,
+} from "./useStyleHandlers";
+
+// Page settings hook (STEP-5.22: extracted from BookThietKeBocTachPage.tsx)
+export { usePageSettings } from "./usePageSettings";
+export type { PageSettings, TextSettings } from "./usePageSettings";
+
+// Canvas event handlers (STEP-5.26: inline callbacks extracted from BookThietKeBocTachPage.tsx)
+export { useCanvasEventHandlers } from "./useCanvasEventHandlers";
+export type { UseCanvasEventHandlersParams } from "./useCanvasEventHandlers";

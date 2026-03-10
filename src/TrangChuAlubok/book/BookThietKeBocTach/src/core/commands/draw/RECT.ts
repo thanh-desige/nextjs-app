@@ -84,7 +84,7 @@ export class RectCommand implements IInteractiveCommand {
       );
     }
 
-    rect.layerId = context.layerId;
+    rect.layerId = context.layerId || "default";
     // NOTE: Không gọi context.engine.addEntity() - executeInteractiveCommand() sẽ xử lý
     this.createdEntity = rect;
 
@@ -98,7 +98,18 @@ export class RectCommand implements IInteractiveCommand {
   undo(context: CommandContext): void {
     if (this.createdEntity) {
       context.engine.removeEntity(this.createdEntity.id);
-      this.createdEntity = null;
     }
+  }
+
+  redo(context: CommandContext): CommandResult {
+    if (this.createdEntity) {
+      context.engine.addEntity(this.createdEntity);
+      return {
+        success: true,
+        message: `Redo: Đã tạo lại hình chữ nhật`,
+        entities: [this.createdEntity],
+      };
+    }
+    return { success: false, message: "Không có entity để redo" };
   }
 }

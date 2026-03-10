@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" 
+     width="800" height="600" 
+     viewBox="0 0 800 600">
+  <title>Cửa sổ hất</title>
+  <desc>Exported from CAD Thiết Kế Bóc Tách</desc>
+  
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#1a1a2e"/>
+  
+  <!-- Entities: transform to flip Y and position correctly -->
+  <g transform="translate(20, 580) scale(1, -1) translate(-5, 424)">
+    <polygon points="553,-157.99999999999994 553,-373 583,-403 583,-127.99999999999994" 
+                      stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+                      fill="#CCCCFF" fill-opacity="1"/>
+    <line x1="583" y1="-128" 
+                   x2="204" y2="-128" 
+                   stroke="#FFFFFF" stroke-width="1" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    <line x1="553" y1="-158" 
+                   x2="234" y2="-158" 
+                   stroke="#FFFFFF" stroke-width="1" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    <polygon points="553,-373 234,-373 204,-403 583,-403" 
+                      stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+                      fill="#CCCCFF" fill-opacity="1"/>
+    <polygon points="204,-128 234,-158 553,-158 583,-128" 
+                      stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+                      fill="#CCCCFF" fill-opacity="1"/>
+    <polygon points="237,-370 550,-370 550,-161 237,-161" 
+                      stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+                      fill="#AAFFAA" fill-opacity="0.07"/>
+    <line x1="393.5" y1="-161" 
+                   x2="237" y2="-370" 
+                   stroke="#ff00ff" stroke-width="3" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    <line x1="204" y1="-128" 
+                   x2="583" y2="-128" 
+                   stroke="#ff00ff" stroke-width="0.25" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    <polygon points="234,-158 204,-128 204,-403 234,-373" 
+                      stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+                      fill="#CCCCFF" fill-opacity="1"/>
+    <line x1="393.5" y1="-161" 
+                   x2="550" y2="-370" 
+                   stroke="#ff00ff" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    <line x1="201" y1="-406" 
+                   x2="586" y2="-406" 
+                   stroke="#ff00ff" stroke-width="0.25" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    <line x1="586" y1="-406" 
+                   x2="586" y2="-125" 
+                   stroke="#ff00ff" stroke-width="0.25" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    <line x1="201" y1="-125" 
+                   x2="201" y2="-406" 
+                   stroke="#ff00ff" stroke-width="0.25" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    <polygon points="586,-125 586,-406 604,-424 604,-107" 
+                      stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+                      fill="#CCCCFF" fill-opacity="1"/>
+    <polygon points="586,-406 201,-406 183,-424 604,-424" 
+                      stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+                      fill="#CCCCFF" fill-opacity="1"/>
+    <polygon points="201,-406 201,-125 183,-107 183,-424" 
+                      stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+                      fill="#CCCCFF" fill-opacity="1"/>
+    <polygon points="604,-107 183,-107 201,-125 586,-125" 
+                      stroke="#FFFFFF" stroke-width="2" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+                      fill="#CCCCFF" fill-opacity="1"/>
+    <line x1="393.5" y1="-383" 
+                   x2="441.03847183439717" y2="-383" 
+                   stroke="#FF00FF" stroke-width="0.25" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    <line x1="393.5" y1="-393" 
+                   x2="441.03847183439717" y2="-393" 
+                   stroke="#FF00FF" stroke-width="0.25" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    <circle cx="393.5" cy="-388" r="5" 
+                     stroke="#FF00FF" stroke-width="0.25" stroke-opacity="1" vector-effect="non-scaling-stroke" 
+                     fill="#00FFFF" fill-opacity="1"/>
+    <line x1="398.5" y1="-388" 
+                   x2="441.03847183439717" y2="-388" 
+                   stroke="#FF00FF" stroke-width="0.25" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+    <line x1="441.03847183439717" y1="-383" 
+                   x2="441.03847183439717" y2="-393" 
+                   stroke="#FF00FF" stroke-width="0.25" stroke-opacity="1" vector-effect="non-scaling-stroke"/>
+  </g>
+</svg>

@@ -76,7 +76,7 @@ export class LineCommand implements IInteractiveCommand {
       const start = context.points[context.points.length - 1];
       const end = context.points[0];
       const line = LineEntity.create(start, end, context.style);
-      line.layerId = context.layerId;
+      line.layerId = context.layerId || "default";
       context.engine.addEntity(line);
       this.createdEntities.push(line);
     }
@@ -100,7 +100,7 @@ export class LineCommand implements IInteractiveCommand {
         context.points[i + 1],
         context.style
       );
-      line.layerId = context.layerId;
+      line.layerId = context.layerId || "default";
       entities.push(line);
     }
 
@@ -117,6 +117,19 @@ export class LineCommand implements IInteractiveCommand {
     for (const entity of this.createdEntities) {
       context.engine.removeEntity(entity.id);
     }
-    this.createdEntities = [];
+  }
+
+  redo(context: CommandContext): CommandResult {
+    if (this.createdEntities.length > 0) {
+      for (const entity of this.createdEntities) {
+        context.engine.addEntity(entity);
+      }
+      return {
+        success: true,
+        message: `Redo: Đã tạo lại ${this.createdEntities.length} đoạn thẳng`,
+        entities: this.createdEntities,
+      };
+    }
+    return { success: false, message: "Không có entity để redo" };
   }
 }

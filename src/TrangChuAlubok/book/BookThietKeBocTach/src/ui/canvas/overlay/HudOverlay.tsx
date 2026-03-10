@@ -7,6 +7,14 @@
 
 import React from "react";
 
+// CSS keyframes for cursor blink animation
+const blinkKeyframes = `
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+`;
+
 export interface Point {
   x: number;
   y: number;
@@ -30,6 +38,7 @@ export interface HudOverlayProps {
     label2?: string;
   };
   screenPosition?: Point; // Position for dynamic input near cursor
+  displacementInput?: string; // User's typed input for distance<angle
 }
 
 export const HudOverlay: React.FC<HudOverlayProps> = ({
@@ -43,6 +52,7 @@ export const HudOverlay: React.FC<HudOverlayProps> = ({
   commandPrompt,
   dynamicInput,
   screenPosition,
+  displacementInput,
 }) => {
   if (width <= 0 || height <= 0) {
     return null;
@@ -59,6 +69,9 @@ export const HudOverlay: React.FC<HudOverlayProps> = ({
         pointerEvents: "none",
       }}
     >
+      {/* Inject keyframes for blink animation */}
+      <style>{blinkKeyframes}</style>
+
       {/* Coordinate display - bottom left */}
       <div
         style={{
@@ -108,38 +121,46 @@ export const HudOverlay: React.FC<HudOverlayProps> = ({
             top: screenPosition.y + 15,
             background: "transparent",
             display: "flex",
-            gap: 8,
+            flexDirection: "column",
+            gap: 4,
             pointerEvents: "auto",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span
+          {/* User input field - highlighted when typing */}
+          {displacementInput !== undefined && (
+            <div
               style={{
-                color: "#888",
-                fontSize: 11,
-                fontFamily: "monospace",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                background: "rgba(0, 100, 200, 0.3)",
+                padding: "2px 6px",
+                borderRadius: 3,
+                border: "1px solid #4a90d9",
               }}
             >
-              {dynamicInput.label1 || "L:"}
-            </span>
-            <input
-              type="text"
-              value={dynamicInput.value1}
-              readOnly
-              style={{
-                width: 60,
-                padding: "2px 4px",
-                fontSize: 11,
-                fontFamily: "monospace",
-                background: "#1a1a2e",
-                border: "1px solid #4a90d9",
-                borderRadius: 2,
-                color: "#fff",
-                outline: "none",
-              }}
-            />
-          </div>
-          {dynamicInput.value2 !== undefined && (
+              <span
+                style={{
+                  color: "#0ff",
+                  fontSize: 12,
+                  fontFamily: "monospace",
+                  fontWeight: "bold",
+                }}
+              >
+                {displacementInput || "type distance<angle"}
+                <span
+                  style={{
+                    animation: "blink 1s infinite",
+                    marginLeft: 1,
+                  }}
+                >
+                  |
+                </span>
+              </span>
+            </div>
+          )}
+          {/* Distance and Angle display */}
+          <div style={{ display: "flex", gap: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <span
                 style={{
@@ -148,26 +169,51 @@ export const HudOverlay: React.FC<HudOverlayProps> = ({
                   fontFamily: "monospace",
                 }}
               >
-                {dynamicInput.label2 || "A:"}
+                {dynamicInput.label1 || "D:"}
               </span>
-              <input
-                type="text"
-                value={dynamicInput.value2}
-                readOnly
+              <span
                 style={{
-                  width: 60,
+                  minWidth: 60,
                   padding: "2px 4px",
                   fontSize: 11,
                   fontFamily: "monospace",
                   background: "#1a1a2e",
-                  border: "1px solid #888",
+                  border: "1px solid #4a90d9",
                   borderRadius: 2,
                   color: "#fff",
-                  outline: "none",
                 }}
-              />
+              >
+                {dynamicInput.value1}
+              </span>
             </div>
-          )}
+            {dynamicInput.value2 !== undefined && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span
+                  style={{
+                    color: "#888",
+                    fontSize: 11,
+                    fontFamily: "monospace",
+                  }}
+                >
+                  {dynamicInput.label2 || "A:"}
+                </span>
+                <span
+                  style={{
+                    minWidth: 60,
+                    padding: "2px 4px",
+                    fontSize: 11,
+                    fontFamily: "monospace",
+                    background: "#1a1a2e",
+                    border: "1px solid #888",
+                    borderRadius: 2,
+                    color: "#fff",
+                  }}
+                >
+                  {dynamicInput.value2}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

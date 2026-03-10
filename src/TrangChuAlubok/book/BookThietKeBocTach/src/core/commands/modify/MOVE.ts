@@ -1,5 +1,8 @@
 /**
  * MOVE Command - Di chuyển entities đã chọn
+ *
+ * STEP-3.9: Uses EntityBridge for immutable transforms.
+ * No more BaseEntity casts — all operations via EntityRegistry.
  */
 
 import {
@@ -10,7 +13,7 @@ import {
 } from "../Command.types";
 import { Vec2, IVec2 } from "../../geometry/Vec2";
 import { IEntity } from "../../entities/Entity.types";
-import { BaseEntity } from "../../entities/BaseEntity";
+import { translateIEntity } from "../../entities/EntityBridge";
 
 export class MoveCommand implements ICommand {
   readonly name = "MOVE";
@@ -18,9 +21,11 @@ export class MoveCommand implements ICommand {
   readonly canUndo = true;
 
   private data: MoveCommandData | null = null;
-  private originalPoints: Map<string, IVec2[]> = new Map();
 
-  constructor(private delta: IVec2, private entityIds?: string[]) {}
+  constructor(
+    private delta: IVec2,
+    private entityIds?: string[],
+  ) {}
 
   execute(context: CommandContext): CommandResult {
     // Lấy entities cần move
@@ -47,19 +52,10 @@ export class MoveCommand implements ICommand {
       delta: this.delta,
     };
 
-    // Lưu điểm gốc để undo
+    // Thực hiện di chuyển qua EntityRegistry (immutable)
     for (const entity of entities) {
-      const baseEntity = entity as BaseEntity;
-      this.originalPoints.set(
-        entity.id,
-        baseEntity.getPoints().map((p) => p.clone())
-      );
-    }
-
-    // Thực hiện di chuyển
-    for (const entity of entities) {
-      const baseEntity = entity as BaseEntity;
-      baseEntity.translate(this.delta.x, this.delta.y);
+      const moved = translateIEntity(entity, this.delta.x, this.delta.y);
+      context.engine.updateEntity(entity.id, moved);
     }
 
     context.engine.requestRender();
@@ -74,11 +70,16 @@ export class MoveCommand implements ICommand {
   undo(context: CommandContext): void {
     if (!this.data) return;
 
-    // Di chuyển ngược lại
+    // Di chuyển ngược lại (immutable)
     for (const entityId of this.data.entityIds) {
-      const entity = context.engine.getEntity(entityId) as BaseEntity;
+      const entity = context.engine.getEntity(entityId);
       if (entity) {
-        entity.translate(-this.data.delta.x, -this.data.delta.y);
+        const moved = translateIEntity(
+          entity,
+          -this.data.delta.x,
+          -this.data.delta.y,
+        );
+        context.engine.updateEntity(entityId, moved);
       }
     }
 
@@ -91,9 +92,14 @@ export class MoveCommand implements ICommand {
     }
 
     for (const entityId of this.data.entityIds) {
-      const entity = context.engine.getEntity(entityId) as BaseEntity;
+      const entity = context.engine.getEntity(entityId);
       if (entity) {
-        entity.translate(this.data.delta.x, this.data.delta.y);
+        const moved = translateIEntity(
+          entity,
+          this.data.delta.x,
+          this.data.delta.y,
+        );
+        context.engine.updateEntity(entityId, moved);
       }
     }
 
@@ -111,7 +117,7 @@ export class MoveCommand implements ICommand {
 export function createMoveCommand(
   basePoint: IVec2,
   destPoint: IVec2,
-  entityIds?: string[]
+  entityIds?: string[],
 ): MoveCommand {
   const base = Vec2.from(basePoint);
   const dest = Vec2.from(destPoint);

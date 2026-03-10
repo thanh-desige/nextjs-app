@@ -1,0 +1,135 @@
+{
+  "id": "pma55",
+  "name": "PMA 55",
+  "brand": "PMA",
+  "version": "1.0.0",
+  "description": "Hệ cửa nhôm PMA 55 - Cửa đi mở quay cao cấp",
+
+  "profiles": {
+    "frame": {
+      "code": "PMA55-F01",
+      "name": "Khung bao",
+      "type": "frame",
+      "width": 55,
+      "height": 50,
+      "weight": 0.95,
+      "price": 145000,
+      "color": "white"
+    },
+    "sash": {
+      "code": "PMA55-S01",
+      "name": "Khung cánh",
+      "type": "sash",
+      "width": 55,
+      "height": 65,
+      "weight": 1.02,
+      "price": 158000,
+      "color": "white"
+    },
+    "mullion": {
+      "code": "PMA55-M01",
+      "name": "Đố đứng",
+      "type": "mullion",
+      "width": 55,
+      "height": 50,
+      "weight": 0.88,
+      "price": 135000,
+      "color": "white"
+    },
+    "transom": {
+      "code": "PMA55-T01",
+      "name": "Đố ngang",
+      "type": "transom",
+      "width": 55,
+      "height": 50,
+      "weight": 0.88,
+      "price": 135000,
+      "color": "white"
+    },
+    "bead": {
+      "code": "PMA55-B01",
+      "name": "Nẹp kính",
+      "type": "bead",
+      "width": 20,
+      "height": 24,
+      "weight": 0.28,
+      "price": 42000,
+      "color": "white"
+    }
+  },
+
+  "accessories": {
+    "hinge3d": {
+      "code": "PMA55-H01",
+      "name": "Bản lề 3D Roto",
+      "type": "hinge",
+      "unit": "pcs",
+      "price": 125000,
+      "applicableTo": ["hinged-single", "hinged-double"]
+    },
+    "handleLever": {
+      "code": "PMA55-HL01",
+      "name": "Tay nắm Roto",
+      "type": "handle",
+      "unit": "set",
+      "price": 280000,
+      "applicableTo": ["hinged-single", "hinged-double"]
+    },
+    "lockMultipoint": {
+      "code": "PMA55-LM01",
+      "name": "Khóa đa điểm",
+      "type": "lock",
+      "unit": "set",
+      "price": 650000,
+      "applicableTo": ["hinged-single", "hinged-double"]
+    },
+    "sealEPDM": {
+      "code": "PMA55-SE01",
+      "name": "Ron EPDM cao cấp",
+      "type": "seal",
+      "unit": "m",
+      "price": 22000,
+      "applicableTo": ["hinged-single", "hinged-double", "fixed"]
+    },
+    "cornerBracket": {
+      "code": "PMA55-C01",
+      "name": "Ke góc inox",
+      "type": "corner",
+      "unit": "pcs",
+      "price": 18000,
+      "applicableTo": ["hinged-single", "hinged-double", "fixed"]
+    }
+  },
+
+  "glass": {
+    "minThickness": 5,
+    "maxThickness": 28,
+    "supportedTypes": [
+      "clear",
+      "tinted",
+      "reflective",
+      "laminated",
+      "tempered",
+      "insulated",
+      "low-e"
+    ],
+    "defaultThickness": 10,
+    "defaultType": "tempered"
+  },
+
+  "constraints": {
+    "minWidth": 450,
+    "maxWidth": 1300,
+    "minHeight": 700,
+    "maxHeight": 2600,
+    "maxArea": 3.0,
+    "maxWeight": 100
+  },
+
+  "formulas": {
+    "frameDeduction": 12,
+    "sashDeduction": 18,
+    "glassDeduction": 24,
+    "beadOverlap": 6
+  }
+}

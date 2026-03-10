@@ -3,7 +3,9 @@
  */
 
 import { IVec2 } from "../geometry/Vec2";
-import { BoundingBox } from "../geometry/GeometryUtils";
+
+// BoundingBox import removed — IEntity is now data-only (STEP-3.9)
+// Operations like getBounds() go through EntityBridge or EntityRegistry
 
 // ==================== Entity Type Enum ====================
 
@@ -67,6 +69,15 @@ export const DEFAULT_STATE: EntityState = {
 
 // ==================== Entity Base Interface ====================
 
+/**
+ * IEntity — Data-only interface for all CAD entities.
+ *
+ * STEP-3.9: Method signatures REMOVED.
+ * All operations (translate, rotate, scale, getBounds, containsPoint, clone)
+ * go through EntityBridge utility functions or EntityRegistry.
+ *
+ * This is a PURE DATA interface — no behavior methods.
+ */
 export interface IEntity {
   /** ID duy nhất */
   id: string;
@@ -83,21 +94,9 @@ export interface IEntity {
   /** Metadata tùy chỉnh */
   metadata?: Record<string, unknown>;
 
-  // Methods
-  /** Clone entity */
-  clone(): IEntity;
-  /** Lấy bounding box */
-  getBounds(): BoundingBox;
-  /** Kiểm tra điểm có trong entity */
-  containsPoint(point: IVec2, tolerance?: number): boolean;
-  /** Di chuyển entity */
-  translate(dx: number, dy: number): void;
-  /** Xoay entity quanh điểm */
-  rotate(angle: number, center: IVec2): void;
-  /** Scale entity từ điểm */
-  scale(sx: number, sy: number, center: IVec2): void;
-  /** Serialize */
-  toJSON(): EntityJSON;
+  // NO METHOD SIGNATURES — all operations via EntityBridge / EntityRegistry
+  // See: EntityBridge.ts for translateIEntity, rotateIEntity, scaleIEntity, etc.
+  // See: EntityRegistry.ts for entityRegistry.translate(), .rotate(), etc.
 }
 
 // ==================== Specific Entity Interfaces ====================
@@ -193,35 +192,35 @@ export interface IEntityFactory {
   createLine(
     start: IVec2,
     end: IVec2,
-    options?: Partial<EntityStyle>
+    options?: Partial<EntityStyle>,
   ): ILineEntity;
   createRect(
     origin: IVec2,
     width: number,
     height: number,
-    options?: Partial<EntityStyle>
+    options?: Partial<EntityStyle>,
   ): IRectEntity;
   createCircle(
     center: IVec2,
     radius: number,
-    options?: Partial<EntityStyle>
+    options?: Partial<EntityStyle>,
   ): ICircleEntity;
   createArc(
     center: IVec2,
     radius: number,
     startAngle: number,
     endAngle: number,
-    options?: Partial<EntityStyle>
+    options?: Partial<EntityStyle>,
   ): IArcEntity;
   createPolyline(
     points: IVec2[],
     closed?: boolean,
-    options?: Partial<EntityStyle>
+    options?: Partial<EntityStyle>,
   ): IPolylineEntity;
   createText(
     position: IVec2,
     text: string,
-    options?: Partial<EntityStyle>
+    options?: Partial<EntityStyle>,
   ): ITextEntity;
   createFromJSON(json: EntityJSON): IEntity;
 }

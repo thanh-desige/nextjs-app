@@ -69,18 +69,18 @@ export interface UsePropertiesReturn {
   // Actions with validation (ĐIỀU KIỆN 2)
   setProperty: (
     key: string,
-    value: PropertyValue
+    value: PropertyValue,
   ) => ApplyResult | ApplyResult[];
   setStyle: (style: Partial<EntityStyle>) => ApplyResult | ApplyResult[];
   setMultipleProperties: (
-    properties: Record<string, PropertyValue>
+    properties: Record<string, PropertyValue>,
   ) => ApplyResult | ApplyResult[];
 
   // Validation (ĐIỀU KIỆN 2)
   validateProperty: (
     entityType: EntityType,
     key: string,
-    value: PropertyValue
+    value: PropertyValue,
   ) => ValidationResult;
   getPropertySchema: (entityType: EntityType) => PropertyDefinition[];
 
@@ -147,13 +147,21 @@ const generalProperties: PropertyDefinition[] = [
 // ==================== Hook Implementation ====================
 
 export function useProperties(): UsePropertiesReturn {
-  // Store selectors
-  const selectedIds = useEngineStore((state) => state.selectedIds);
+  // STEP-1.3: Read selectedIds from CadDocument via documentVersion
+  const getDocument = useEngineStore((s) => s.getDocument);
+  const documentVersion = useEngineStore((s) => s.documentVersion);
   const getEntity = useEngineStore((state) => state.getEntity);
   // ĐIỀU KIỆN 1: Use executeCommandObject for Undo/Redo support
   const executeCommandObject = useEngineStore(
-    (state) => state.executeCommandObject
+    (state) => state.executeCommandObject,
   );
+
+  // Read selectedIds from CadDocument (single source of truth)
+  const selectedIds = useMemo(() => {
+    const doc = getDocument();
+    return doc?.getCanvasSelectedIds() ?? [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentVersion, getDocument]);
 
   // Get selected entities
   const selectedEntities = useMemo(() => {
@@ -247,7 +255,7 @@ export function useProperties(): UsePropertiesReturn {
         const validationResult = PropertyApplier.applyProperty(
           entity,
           key,
-          value
+          value,
         );
         results.push(validationResult);
 
@@ -264,7 +272,7 @@ export function useProperties(): UsePropertiesReturn {
             const command = new UpdateEntityPropertyCommand(
               entity.id,
               key,
-              value
+              value,
             );
             executeCommandObject(command);
           }
@@ -273,7 +281,7 @@ export function useProperties(): UsePropertiesReturn {
 
       return results.length === 1 ? results[0] : results;
     },
-    [selectedEntities, executeCommandObject]
+    [selectedEntities, executeCommandObject],
   );
 
   // Set style with validation (ĐIỀU KIỆN 1 + 2)
@@ -295,13 +303,13 @@ export function useProperties(): UsePropertiesReturn {
 
       return results.length === 1 ? results[0] : results;
     },
-    [selectedEntities, executeCommandObject]
+    [selectedEntities, executeCommandObject],
   );
 
   // Set multiple properties with validation (ĐIỀU KIỆN 1 + 2)
   const setMultipleProperties = useCallback(
     (
-      properties: Record<string, PropertyValue>
+      properties: Record<string, PropertyValue>,
     ): ApplyResult | ApplyResult[] => {
       const results: ApplyResult[] = [];
 
@@ -312,7 +320,7 @@ export function useProperties(): UsePropertiesReturn {
         for (const entity of selectedEntities) {
           const validationResult = PropertyApplier.applyProperties(
             entity,
-            properties
+            properties,
           );
           results.push(validationResult);
           if (!validationResult.success) {
@@ -335,7 +343,7 @@ export function useProperties(): UsePropertiesReturn {
         // ĐIỀU KIỆN 2: Validate with PropertyApplier
         const validationResult = PropertyApplier.applyProperties(
           entity,
-          properties
+          properties,
         );
         results.push(validationResult);
 
@@ -343,7 +351,7 @@ export function useProperties(): UsePropertiesReturn {
           // ĐIỀU KIỆN 1: Use Command for Undo/Redo support
           const command = new UpdateEntityPropertiesCommand(
             entity.id,
-            properties
+            properties,
           );
           executeCommandObject(command);
         }
@@ -351,7 +359,7 @@ export function useProperties(): UsePropertiesReturn {
 
       return results.length === 1 ? results[0] : results;
     },
-    [selectedEntities, executeCommandObject]
+    [selectedEntities, executeCommandObject],
   );
 
   // Get property value
@@ -360,7 +368,7 @@ export function useProperties(): UsePropertiesReturn {
       if (mixedProperties.has(key)) return undefined;
       return commonProperties[key];
     },
-    [commonProperties, mixedProperties]
+    [commonProperties, mixedProperties],
   );
 
   // Check if property is mixed
@@ -368,7 +376,7 @@ export function useProperties(): UsePropertiesReturn {
     (key: string): boolean => {
       return mixedProperties.has(key);
     },
-    [mixedProperties]
+    [mixedProperties],
   );
 
   // Validate property before applying (ĐIỀU KIỆN 2)
@@ -376,11 +384,11 @@ export function useProperties(): UsePropertiesReturn {
     (
       entityType: EntityType,
       key: string,
-      value: PropertyValue
+      value: PropertyValue,
     ): ValidationResult => {
       return propertySchema.validateProperty(entityType, key, value);
     },
-    []
+    [],
   );
 
   // Get property schema for entity type (ĐIỀU KIỆN 2)
@@ -403,7 +411,7 @@ export function useProperties(): UsePropertiesReturn {
         step: prop.step,
       }));
     },
-    []
+    [],
   );
 
   return {

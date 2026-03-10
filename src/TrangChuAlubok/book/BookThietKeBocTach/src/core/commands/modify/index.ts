@@ -11,3 +11,9 @@ export { DeleteCommand, EraseCommand } from "./DELETE";
 export { OffsetCommand } from "./OFFSET";
 export { TrimCommand } from "./trim";
 export { ExtendCommand } from "./extend";
+export {
+  BoundaryCommand,
+  createBoundaryCommand,
+  findBoundaryFromEntities,
+} from "./boundary";
+// EXPLODE: Dùng ExplodeCanvasEntitiesCommand từ core/commands/canvas/ (CanvasEntity system)

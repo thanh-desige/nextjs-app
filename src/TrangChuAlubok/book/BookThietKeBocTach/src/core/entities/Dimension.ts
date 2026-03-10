@@ -11,7 +11,11 @@ import {
   distancePointToPoint,
   distancePointToSegment,
 } from "../geometry/GeometryUtils";
-import { BaseEntity, createGripPoint } from "./BaseEntity";
+import {
+  initEntityBase,
+  createGripPoint,
+  serializeEntityBase,
+} from "./EntityBaseUtils";
 import {
   EntityType,
   EntityStyle,
@@ -48,8 +52,19 @@ const DEFAULT_DIMENSION_STYLE: DimensionStyle = {
   unitScale: 1,
 };
 
-export class DimensionEntity extends BaseEntity implements IDimensionEntity {
+export class DimensionEntity implements IDimensionEntity {
+  public id: string;
   public readonly type = EntityType.DIMENSION;
+  public name?: string;
+  public layerId: string;
+  public style: EntityStyle;
+  public state: {
+    selected: boolean;
+    hovered: boolean;
+    visible: boolean;
+    locked: boolean;
+  };
+  public metadata?: Record<string, unknown>;
   public startPoint: Vec2;
   public endPoint: Vec2;
   public textPosition: Vec2;
@@ -72,9 +87,15 @@ export class DimensionEntity extends BaseEntity implements IDimensionEntity {
       prefix?: string;
       suffix?: string;
       dimStyle?: Partial<DimensionStyle>;
-    }
+    },
   ) {
-    super(options);
+    const base = initEntityBase(options);
+    this.id = base.id;
+    this.name = base.name;
+    this.layerId = base.layerId;
+    this.style = base.style;
+    this.state = base.state;
+    this.metadata = base.metadata;
     this.startPoint = Vec2.from(startPoint);
     this.endPoint = Vec2.from(endPoint);
     this.offset = options?.offset ?? 30;
@@ -93,7 +114,7 @@ export class DimensionEntity extends BaseEntity implements IDimensionEntity {
     startPoint: IVec2,
     endPoint: IVec2,
     offset: number = 30,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): DimensionEntity {
     return new DimensionEntity(startPoint, endPoint, { offset, style });
   }
@@ -103,12 +124,12 @@ export class DimensionEntity extends BaseEntity implements IDimensionEntity {
     startPoint: IVec2,
     endPoint: IVec2,
     yOffset: number,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): DimensionEntity {
     const dim = new DimensionEntity(
       { x: startPoint.x, y: startPoint.y },
       { x: endPoint.x, y: startPoint.y },
-      { style }
+      { style },
     );
     dim.offset = yOffset;
     dim.textPosition = dim.calculateDefaultTextPosition();
@@ -120,12 +141,12 @@ export class DimensionEntity extends BaseEntity implements IDimensionEntity {
     startPoint: IVec2,
     endPoint: IVec2,
     xOffset: number,
-    style?: Partial<EntityStyle>
+    style?: Partial<EntityStyle>,
   ): DimensionEntity {
     const dim = new DimensionEntity(
       { x: startPoint.x, y: startPoint.y },
       { x: startPoint.x, y: endPoint.y },
-      { style }
+      { style },
     );
     dim.offset = xOffset;
     dim.textPosition = dim.calculateDefaultTextPosition();
@@ -146,7 +167,7 @@ export class DimensionEntity extends BaseEntity implements IDimensionEntity {
         prefix: json.prefix as string | undefined,
         suffix: json.suffix as string | undefined,
         dimStyle: json.dimStyle as Partial<DimensionStyle>,
-      }
+      },
     );
     dim.textPosition = Vec2.from(json.textPosition as IVec2);
     dim.metadata = json.metadata;
@@ -245,15 +266,19 @@ export class DimensionEntity extends BaseEntity implements IDimensionEntity {
       this.startPoint.clone(),
       this.endPoint.clone(),
       {
+        layerId: this.layerId,
+        style: { ...this.style },
+        name: this.name,
         offset: this.offset,
         value: this.value,
         prefix: this.prefix,
         suffix: this.suffix,
         dimStyle: { ...this.dimStyle },
-      }
+      },
     );
     cloned.textPosition = this.textPosition.clone();
-    cloned.copyBaseFrom(this);
+    cloned.state = { ...this.state };
+    cloned.metadata = this.metadata ? { ...this.metadata } : undefined;
     return cloned;
   }
 
@@ -359,7 +384,7 @@ export class DimensionEntity extends BaseEntity implements IDimensionEntity {
 
   toJSON(): EntityJSON {
     return {
-      ...this.serializeBase(),
+      ...serializeEntityBase(this),
       type: this.type,
       startPoint: this.startPoint.toObject(),
       endPoint: this.endPoint.toObject(),
