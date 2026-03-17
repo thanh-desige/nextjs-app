@@ -73,10 +73,49 @@ src/TrangChuAlubok/
 │       ├── PhuKienNhom.tsx         # Phụ kiện nhôm
 │       └── TongHop.tsx             # Tổng hợp tất cả
 └── book/                           # Các module sổ sách
+
+src/PlatformAdmin/                  # ⚡ QuanTriAdmin — Platform Admin ALUBOK (TÁCH BIỆT khỏi Book)
+├── PlatformAdminPage.tsx           # Entry page + sidebar 16 items (4 sections) + routing
+├── tenants/
+│   └── TenantsPage.tsx             # E1: Quản lý tất cả org/tenant
+├── users/
+│   └── UsersPage.tsx               # E2: Quản lý tất cả user global
+├── subscriptions/
+│   └── SubscriptionsPage.tsx       # E3: Quản lý gói, billing
+├── entitlements/
+│   └── EntitlementsPage.tsx        # E4: Feature flags, module entitlements
+├── internal-roles/
+│   └── InternalRolesPage.tsx       # E5: Vai trò nội bộ ALUBOK
+├── security/
+│   └── SecurityLogPage.tsx         # E6: Security log toàn nền tảng
+├── support/
+│   └── SupportConsolePage.tsx      # E7: Hỗ trợ KH, impersonation, tickets
+├── monitoring/
+│   └── MonitoringPage.tsx          # E8: System health, metrics
+├── jobs/
+│   └── JobsQueuePage.tsx           # E9: Background jobs, queue
+├── storage/
+│   └── StoragePage.tsx             # E10: Storage usage, data governance
+├── backup/
+│   └── BackupRestorePage.tsx       # E11: Backup/restore toàn platform
+├── integrations/
+│   └── IntegrationsPage.tsx        # E12: SSO, email, payment, webhook
+├── notifications/
+│   └── NotificationsPage.tsx       # E13: Notification templates
+├── analytics/
+│   └── PlatformAnalyticsPage.tsx   # E14: Platform-wide analytics (MAU, MRR, churn)
+├── release/
+│   └── ReleaseControlPage.tsx      # E15: Release management, remote config
+└── config/
+    └── PlatformConfigPage.tsx      # E16: Platform settings, maintenance mode
     ├── App.tsx                     # Book app root component
     ├── Sidebar.tsx                 # Thanh điều hướng trái (8 mục: 6 sổ + Kế toán + Thiết lập)
     ├── BOOK_STRUCTURE.md          # 📋 Tổng quan 10 module, trạng thái, cấu trúc
-    ├── PERMISSION_CATALOG.md      # 🔒 Phân quyền (43 resources, ~250 permissions, 6 roles)
+    ├── PROJECT_ROADMAP.md         # 🗺️ Thứ tự ưu tiên build (Đợt 1→4 + Song song)
+    ├── MODULE_TAB_PAGE_MAP.md     # 🗂️ Bảng tổng hợp: 10 module → ~48 tabs → ~113 pages
+    ├── MODULE_TAB_PAGE_DETAIL.md  # 📑 Chi tiết từng module: tabs, pages, permissions, mô tả
+    ├── PERMISSION_CATALOG.md      # 🔒 Phân quyền Lớp 2 (43 resources, ~250 permissions, 6 roles)
+    ├── AUTHORIZATION_ARCHITECTURE.md # 🏛️ Kiến trúc phân quyền Hybrid 2 lớp (Platform + App + DataScope + Approval)
     │
     ├── BookBanHang.tsx             # 💰 Sổ Bán Hàng (placeholder)
     ├── BookMuaHang.tsx             # 🛒 Sổ Mua Hàng (placeholder)

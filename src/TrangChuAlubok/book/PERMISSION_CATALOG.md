@@ -1,5 +1,8 @@
 # ALUBOK Permission Catalog v1
 
+> **Kiến trúc tổng thể 2 lớp**: Xem [AUTHORIZATION_ARCHITECTURE.md](AUTHORIZATION_ARCHITECTURE.md)
+> File này là **catalog chi tiết**: Lớp 2 (Application Authorization, 43 resources A–D) + Platform Admin (16 resources E).
+
 ## 1. Overview
 
 ALUBOK uses RBAC + Permission Matrix model per company (orgId).
@@ -11,12 +14,14 @@ Examples:
 - `bom.report:generate`
 - `quote:approve`
 - `inventory.stock_issue:confirm`
+- `platform.tenant:manage` *(E group — chỉ internal admin)*
 
-**4 Permission Groups:**
+**5 Permission Groups:**
 1. A — Danh mục (Master Data)
 2. B — Nghiệp vụ (Business Operations)
 3. C — Báo cáo (Reports)
-4. D — Tiện ích & thiết lập (Utilities & Settings)
+4. D — Tiện ích & thiết lập (Utilities & Settings) — **cấp Tenant**
+5. E — Quản trị nền tảng (Platform Administration) — **cấp Platform, chỉ ALUBOK internal**
 
 ---
 
@@ -104,7 +109,10 @@ Examples:
 | C10 | `report.accounting` | read, export |
 | C11 | `report.performance` | read, export |
 
-### D. TIỆN ÍCH & THIẾT LẬP (Utilities & Settings)
+### D. TIỆN ÍCH & THIẾT LẬP (Utilities & Settings) — **Cấp Tenant (org-level)**
+
+> **Lưu ý ranh giới**: Nhóm D phục vụ **khách hàng doanh nghiệp** quản trị tenant CỦA HỌ.
+> Quản trị platform (backup toàn hệ thống, integrations nền tảng, subscription/billing) nằm ở **Nhóm E**.
 
 | # | Resource | Actions |
 |---|----------|---------|
@@ -116,9 +124,34 @@ Examples:
 | D6 | `setting.system` | read, update, manage |
 | D7 | `setting.print_template` | read, create, update, delete, manage |
 | D8 | `setting.audit_log` | read, export |
-| D9 | `setting.backup` | read, create, restore, manage |
-| D10 | `setting.integration` | read, create, update, delete, manage |
-| D11 | `setting.subscription` | read, update, manage |
+
+> **D9–D11 đã chuyển sang Nhóm E** (QuanTriAdmin / Platform-level). ThietLap chỉ còn D1–D8.
+> ThietLap có thể hiện tab "Gói dịch vụ hiện tại" dạng **read-only** (xem gói đang dùng), nhưng quản lý subscription thực sự là E3.
+
+### E. QUẢN TRỊ NỀN TẢNG (Platform Administration) — **Cấp Platform (ALUBOK internal)**
+
+> **Khác hoàn toàn với Nhóm D**: Nhóm E phục vụ **đội nội bộ ALUBOK** quản trị **toàn bộ platform**.
+> Khác cấp độ, khác người dùng, khác phạm vi dữ liệu, khác quyền hạn.
+> Route riêng: `/admin` — tách biệt hoàn toàn khỏi ứng dụng khách hàng.
+
+| # | Resource | Actions | Mô tả |
+|---|----------|---------|-------|
+| E1 | `platform.tenant` | read, create, update, delete, manage | Quản lý tất cả org/tenant |
+| E2 | `platform.user` | read, update, delete, manage | Quản lý tất cả user global |
+| E3 | `platform.subscription` | read, create, update, manage | Subscription, billing, gói dịch vụ |
+| E4 | `platform.entitlement` | read, create, update, delete, manage | Feature flags, module entitlements |
+| E5 | `platform.internal_role` | read, create, update, delete, assign, manage | Vai trò nội bộ ALUBOK |
+| E6 | `platform.security` | read, export, manage | Security center, audit toàn platform |
+| E7 | `platform.support` | read, update, manage | Support console, impersonation |
+| E8 | `platform.health` | read, manage | System health, metrics, monitoring |
+| E9 | `platform.job` | read, create, update, delete, manage | Background jobs, queue |
+| E10 | `platform.storage` | read, update, manage | Storage usage, data governance |
+| E11 | `platform.backup` | read, create, restore, manage | Backup/restore toàn platform |
+| E12 | `platform.integration` | read, create, update, delete, manage | SSO, email, payment, webhook |
+| E13 | `platform.notification` | read, create, update, delete, manage | Notification templates, channels |
+| E14 | `platform.analytics` | read, export | Platform-wide analytics, KPI |
+| E15 | `platform.release` | read, create, update, manage | Release management, remote config |
+| E16 | `platform.config` | read, update, manage | Platform settings, maintenance mode |
 
 ---
 
@@ -176,6 +209,48 @@ Examples:
 - `bom.report:read`
 - `report.sales:*`
 - `report.quote:*`
+
+---
+
+## 4b. Internal Admin Roles (Nhóm E — chỉ ALUBOK internal)
+
+> Các vai trò bên dưới **KHÔNG nằm trong ứng dụng khách hàng** (Book).
+> Chỉ truy cập qua `/admin` — QuanTriAdmin.
+
+### SUPER_ADMIN (Internal)
+- `platform.*:*` (toàn quyền E1–E16)
+- Chỉ 1-2 người, yêu cầu MFA + IP whitelist
+
+### SUPPORT_LEAD (Internal)
+- `platform.tenant:read`
+- `platform.user:read, update`
+- `platform.support:*`
+- `platform.security:read`
+- Quyền impersonation tenant
+
+### SUPPORT_AGENT (Internal)
+- `platform.tenant:read`
+- `platform.user:read`
+- `platform.support:read, update`
+- Không có impersonation
+
+### DEVOPS (Internal)
+- `platform.health:*`
+- `platform.job:*`
+- `platform.backup:*`
+- `platform.storage:read`
+- `platform.config:read, update`
+
+### FINANCE_ADMIN (Internal)
+- `platform.subscription:*`
+- `platform.tenant:read`
+- `platform.analytics:read`
+
+### PRODUCT_MANAGER (Internal)
+- `platform.entitlement:*`
+- `platform.release:*`
+- `platform.analytics:read`
+- `platform.notification:read, create, update`
 
 ---
 

@@ -9,6 +9,7 @@
 ```
 book/
 ├── PERMISSION_CATALOG.md         ← Nguồn chuẩn phân quyền (43 resources, ~250 permissions)
+├── PROJECT_ROADMAP.md            ← Thứ tự ưu tiên build (Đợt 1-4 + Song song)
 ├── BOOK_STRUCTURE.md             ← File này
 │
 ├── shared/                       ← [INTERNAL] Types + RBAC guards dùng chung
@@ -129,7 +130,7 @@ book/
 
 > Chứng từ kế toán, hóa đơn. Reports: C10 (`report.accounting`).
 
-### 10. ThietLap/ — Thiết lập hệ thống
+### 10. ThietLap/ — Thiết lập hệ thống (**cấp Tenant**)
 
 | Catalog | Resources | Sidebar |
 |---------|-----------|---------|
@@ -141,11 +142,40 @@ book/
 | D6 | `setting.system` | |
 | D7 | `setting.print_template` | |
 | D8 | `setting.audit_log` | |
-| D9 | `setting.backup` | |
-| D10 | `setting.integration` | |
-| D11 | `setting.subscription` | |
 
-> Quản lý user, vai trò quyền hạn, tổ chức, cấu hình hệ thống. Có thể hiển thị bằng icon Settings riêng (kiểu MISA).
+> Quản lý user, vai trò quyền hạn, tổ chức, cấu hình hệ thống **của tenant khách hàng**.
+> Có thể hiển thị bằng icon Settings riêng (kiểu MISA).
+>
+> **⚠️ RANH GIỚI QUAN TRỌNG**: ThietLap chỉ gồm D1–D8 (8 tab).
+> Backup (cũ D9), Integration (cũ D10), Subscription (cũ D11) đã chuyển sang **QuanTriAdmin** (Nhóm E).
+> ThietLap có thể hiện tab "Gói dịch vụ hiện tại" dạng **read-only** (xem gói đang dùng).
+
+---
+
+## QuanTriAdmin (PlatformAdmin) — TÁCH BIỆT
+
+> **Không nằm trong Book**. Route riêng: `/admin`. Code: `src/PlatformAdmin/`.
+> Phục vụ **đội nội bộ ALUBOK** quản trị **toàn bộ SaaS platform**.
+> Xem: `PERMISSION_CATALOG.md` Nhóm E (16 resources platform.*).
+
+| Mục | Resources | Mô tả |
+|-----|-----------|-------|
+| Tenants | E1 `platform.tenant` | Quản lý tất cả org/tenant |
+| Users (Global) | E2 `platform.user` | Quản lý tất cả user |
+| Subscriptions & Billing | E3 `platform.subscription` | Gói, billing |
+| Entitlements & Feature Flags | E4 `platform.entitlement` | Feature flags |
+| Internal Admin Roles | E5 `platform.internal_role` | Vai trò nội bộ ALUBOK |
+| Security Center | E6 `platform.security` | Audit toàn platform |
+| Support Console | E7 `platform.support` | Hỗ trợ KH, impersonation |
+| System Health | E8 `platform.health` | Monitoring |
+| Jobs & Queue | E9 `platform.job` | Background tasks |
+| Storage & Data Governance | E10 `platform.storage` | Dung lượng, retention |
+| Backup & Restore | E11 `platform.backup` | Backup toàn platform |
+| Integrations | E12 `platform.integration` | SSO, email, payment |
+| Notifications | E13 `platform.notification` | Notification templates |
+| Platform Analytics | E14 `platform.analytics` | KPI platform |
+| Release & Config Control | E15 `platform.release` | Release mgmt |
+| Platform Settings | E16 `platform.config` | Config, maintenance |
 
 ---
 

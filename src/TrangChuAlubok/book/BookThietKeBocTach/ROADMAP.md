@@ -78,8 +78,8 @@ Xây dựng ứng dụng CAD hoàn chỉnh với Clean Architecture, tuân thủ
 | PHASE 4: Geometry Abstraction            | ⬜ TODO    | Cao      | IVector, Vec3, ICanvasAdapter — 3D-ready foundation   |
 | PHASE 6: Backend + API                   | ⬜ TODO    | —        | PostgreSQL, NextAuth, API routes, webhooks             |
 | PHASE 7: ERP + Performance               | ⬜ TODO    | —        | Dashboard, Sales, Inventory, Door Engines, 60fps       |
-| PHASE 8: 3D                              | ⬜ TODO    | —        | Three.js, ThreeJsAdapter, split view 2D+3D            |
 | PHASE 9: Collaboration                   | ⬜ TODO    | —        | Real-time, versioning, cloud                          |
+| PHASE 8: 3D                              | ⬜ TƯƠNG LAI XA | —   | Chỉ khi dự án đã có nhiều user thực tế               |
 
 > 📍 Chi tiết từng Phase tương lai (code samples, schema, API, specs): xem section **"🔮 FUTURE PHASES"** cuối file
 
@@ -640,7 +640,7 @@ Xây dựng ứng dụng CAD hoàn chỉnh với Clean Architecture, tuân thủ
 
 ## 🔮 FUTURE PHASES — ĐỊNH HƯỚNG PHÁT TRIỂN CHI TIẾT
 
-> **Thứ tự ưu tiên**: Phase NEXT → Phase 4 → Phase 6 → Phase 7 → Phase 8 → Phase 9
+> **Thứ tự ưu tiên**: Phase NEXT → Phase 4 → Phase 6 → Phase 7 → Phase 9 → Phase 8 (tương lai xa)
 > **Nguyên tắc**: Mỗi Phase phải có tests, mỗi file ≤ 800 dòng, IEntity-based
 > **3 mục tiêu luôn giữ**: Extensible → 3D-ready → Integration-ready
 
@@ -970,10 +970,15 @@ Thêm khi domain cần:
 
 ---
 
-### 🎮 PHASE 8 — 3D IMPLEMENTATION
+### 🎮 PHASE 8 — 3D IMPLEMENTATION (TƯƠNG LAI XA)
 
+> ⚠️ **KHÔNG nằm trong kế hoạch ngắn/trung hạn.**
+> Chỉ bắt đầu khi: dự án đã go-live, có user base thực tế, business flow ổn định.
+> Hiện tại chỉ giữ kiến trúc **3D-ready** (không hardcode 2D) — KHÔNG build 3D.
+> Nội dung dưới đây giữ lại để tham khảo kiến trúc.
+>
 > Thời gian: 8+ tuần
-> Điều kiện tiên quyết: Phase 1-4 PHẢI hoàn thành
+> Điều kiện tiên quyết: Phase 1-4 + dự án đã có nhiều người dùng thực tế
 > Mục đích: Nâng cấp 3D thực sự
 
 #### 8.1 Three.js Integration
@@ -1077,8 +1082,8 @@ entityRegistry.register({
   Phase 4    │ ❌ Geometry Abstraction (IVector, Vec3) — 3D-ready
   Phase 6    │ ❌ Backend + API + Auth + DB (PostgreSQL + NextAuth)
   Phase 7    │ ❌ ERP Modules + Door Engines + Performance
-  Phase 8    │ ❌ 3D Implementation (Three.js)
   Phase 9    │ ❌ Collaboration & Cloud
+  Phase 8    │ ❌ 3D Implementation (TƯƠNG LAI XA — khi đã có user base thực tế)
 ```
 
 ### 📊 GIÁ TRỊ ĐẠT ĐƯỢC SAU MỖI PHASE
@@ -1094,8 +1099,8 @@ entityRegistry.register({
 | 4     | 3D-Ready           | Foundation cho tương lai 3D                            | ❌          |
 | 6     | Backend            | **Có thể deploy** cho người dùng thật                  | ❌          |
 | 7     | ERP                | **Hệ sinh thái hoàn chỉnh** theo alubok-motahethong.md | ❌          |
-| 8     | 3D                 | **CAD 3D** — competitive advantage                     | ❌          |
 | 9     | Collaboration      | **Multi-user** — enterprise ready                      | ❌          |
+| 8     | 3D                 | **CAD 3D** — TƯƠNG LAI XA (khi có user base thực tế)  | ❌          |
 
 ### 🔒 COMPLIANCE CROSS-REFERENCE
 
