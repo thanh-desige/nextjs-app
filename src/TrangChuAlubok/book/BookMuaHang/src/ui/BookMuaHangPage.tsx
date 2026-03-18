@@ -15,16 +15,16 @@ import PurchaseRequestList from './PurchaseRequestList';
 import PurchaseRequestForm from './PurchaseRequestForm';
 import PurchaseRequestDetail from './PurchaseRequestDetail';
 import PurchaseReport from './PurchaseReport';
+import MuaHangPage from '../../../../MuaHangPage/MuaHangPage';
 
 const MUA_HANG_TABS = MODULE_ROUTES.find(r => r.page === 2)!.tabs!;
 
 interface BookMuaHangPageProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  onOpenShop?: () => void;
 }
 
-export default function BookMuaHangPage({ activeTab, onTabChange, onOpenShop }: BookMuaHangPageProps): React.ReactElement {
+export default function BookMuaHangPage({ activeTab, onTabChange }: BookMuaHangPageProps): React.ReactElement {
   const [orderView, setOrderView] = useState<ViewMode>('list');
   const [orderSelectedId, setOrderSelectedId] = useState<string | null>(null);
   const [requestView, setRequestView] = useState<ViewMode>('list');
@@ -33,10 +33,6 @@ export default function BookMuaHangPage({ activeTab, onTabChange, onOpenShop }: 
   const tab = activeTab as MuaHangTab;
 
   const handleTabChange = (key: string) => {
-    if (key === 'shop') {
-      onOpenShop?.();
-      return;
-    }
     onTabChange(key);
   };
 
@@ -57,7 +53,7 @@ export default function BookMuaHangPage({ activeTab, onTabChange, onOpenShop }: 
       case 'reports':
         return <PurchaseReport />;
       case 'shop':
-        return null; // handled by handleTabChange
+        return <MuaHangPage onBackClick={() => onTabChange('orders')} />;
     }
   }
 

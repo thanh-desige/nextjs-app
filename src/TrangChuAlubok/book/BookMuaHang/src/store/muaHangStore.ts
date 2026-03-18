@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { PurchaseRequest, PurchaseOrder } from '../types';
+import { logActivityDirect } from '../../../shared/src/hooks/useLogActivity';
 
 interface MuaHangState {
   requests: PurchaseRequest[];
@@ -113,24 +114,42 @@ const initialState = {
 
 export const useMuaHangStore = create<MuaHangState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...initialState,
       setRequests: (requests) => set({ requests }),
-      addRequest: (request) => set((s) => ({ requests: [...s.requests, request] })),
-      updateRequest: (requestId, data) =>
+      addRequest: (request) => {
+        set((s) => ({ requests: [...s.requests, request] }));
+        logActivityDirect('MuaHang', 'create', 'purchaseRequest', request.requestId, request.requestCode, `Tạo yêu cầu mua hàng ${request.requestCode}`);
+      },
+      updateRequest: (requestId, data) => {
+        const code = get().requests.find(r => r.requestId === requestId)?.requestCode ?? requestId;
         set((s) => ({
           requests: s.requests.map((r) => (r.requestId === requestId ? { ...r, ...data } : r)),
-        })),
-      deleteRequest: (requestId) =>
-        set((s) => ({ requests: s.requests.filter((r) => r.requestId !== requestId) })),
+        }));
+        logActivityDirect('MuaHang', 'update', 'purchaseRequest', requestId, code, `Cập nhật YCMH ${code}`);
+      },
+      deleteRequest: (requestId) => {
+        const code = get().requests.find(r => r.requestId === requestId)?.requestCode ?? requestId;
+        set((s) => ({ requests: s.requests.filter((r) => r.requestId !== requestId) }));
+        logActivityDirect('MuaHang', 'delete', 'purchaseRequest', requestId, code, `Xóa YCMH ${code}`);
+      },
       setOrders: (orders) => set({ orders }),
-      addOrder: (order) => set((s) => ({ orders: [...s.orders, order] })),
-      updateOrder: (orderId, data) =>
+      addOrder: (order) => {
+        set((s) => ({ orders: [...s.orders, order] }));
+        logActivityDirect('MuaHang', 'create', 'purchaseOrder', order.orderId, order.orderCode, `Tạo đơn mua hàng ${order.orderCode}`);
+      },
+      updateOrder: (orderId, data) => {
+        const code = get().orders.find(o => o.orderId === orderId)?.orderCode ?? orderId;
         set((s) => ({
           orders: s.orders.map((o) => (o.orderId === orderId ? { ...o, ...data } : o)),
-        })),
-      deleteOrder: (orderId) =>
-        set((s) => ({ orders: s.orders.filter((o) => o.orderId !== orderId) })),
+        }));
+        logActivityDirect('MuaHang', 'update', 'purchaseOrder', orderId, code, `Cập nhật ĐMH ${code}`);
+      },
+      deleteOrder: (orderId) => {
+        const code = get().orders.find(o => o.orderId === orderId)?.orderCode ?? orderId;
+        set((s) => ({ orders: s.orders.filter((o) => o.orderId !== orderId) }));
+        logActivityDirect('MuaHang', 'delete', 'purchaseOrder', orderId, code, `Xóa ĐMH ${code}`);
+      },
       resetAll: () => set(initialState),
     }),
     { name: 'alubok-mua-hang' },

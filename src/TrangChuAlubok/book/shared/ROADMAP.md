@@ -5,7 +5,7 @@
 
 ---
 
-## Trạng thái: ✅ Phase F1 hoàn tất (85 tests, 3 suites)
+## Trạng thái: ✅ Phase F1 + T1 hoàn tất (148 tests, 5 suites)
 
 ## Ưu tiên: ⭐⭐⭐ Rất cao (build đầu tiên)
 
@@ -48,6 +48,36 @@ member_role    → { memberId, roleId }
 - [x] `usePermission("quote:approve")` hook + `useCurrentUser()` + `useCurrentOrg()`
 - [x] Guards: `requirePermission()`, `requireOrgMember()`, `requireModuleAccess()`
 - [x] Business policy: `checkBusinessPolicy()`, `checkApprovalLimit()`, `getDataScopeFilter()`
+
+---
+
+## Phase T1: Trục thời gian vận hành (Time System) — ✅ HOÀN TẤT
+
+**Kết quả**: 63 tests, 2 suites — all pass
+
+### Deliverables
+
+| Deliverable | Mô tả |
+|-------------|--------|
+| `types/time.types.ts` | ISOTimestamp, TimePreset (11), TimeRange, SemanticTime, DueInfo, AgingBucket, FiscalYear, ActivityEvent, ModuleKey |
+| `services/timeService.ts` | getNow, resolvePreset, toSemanticTime, calcDueInfo, calcAgingBuckets, buildFiscalYear, isPeriodLocked, formatDate, formatDateTime, filterByTimeRange |
+| `services/activityLogStore.ts` | Zustand + persist, 10 seed events, addEvent, getByModule, getRecent |
+| `hooks/useLogActivity.ts` | useLogActivity (hook), logActivityDirect (store action helper) |
+| `ui/DateRangeFilter.tsx` | Preset dropdown + custom date picker |
+| `ui/DateTimeDisplay.tsx` | Semantic relative time display |
+| `ui/DueBadge.tsx` | Color-coded due status badge |
+| `ui/ActivityTimeline.tsx` | Vertical timeline visualization |
+
+### Checklist
+
+- [x] timeService.ts — 11 functions, backend-first
+- [x] time.types.ts — all type definitions + constants
+- [x] activityLogStore.ts — cross-cutting event log (10 seed events)
+- [x] 4 UI components (DateRangeFilter, DateTimeDisplay, DueBadge, ActivityTimeline)
+- [x] useLogActivity hook + logActivityDirect function
+- [x] Integrated into 6 module stores (BanHang, MuaHang, TonKho, ThuChi, KeToan, SanXuatThiCong)
+- [x] Patched module types: 12+ time fields added across 6 modules
+- [x] 63 tests (timeService: 37, activityLogStore: 26) — all pass
 - [x] Tests: 85 tests, 3 suites (permissionUtils, guards, catalog integrity)
 
 ---

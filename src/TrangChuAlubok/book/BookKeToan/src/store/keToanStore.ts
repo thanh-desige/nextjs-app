@@ -6,6 +6,7 @@ import type {
   VoucherStatus,
   InvoiceStatus,
 } from '../types';
+import { logActivityDirect } from '../../../shared/src/hooks/useLogActivity';
 
 // ── Seed Data ───────────────────────────────────────────────
 
@@ -186,29 +187,47 @@ interface KeToanState {
 
 export const useKeToanStore = create<KeToanState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       vouchers: SEED_VOUCHERS,
       invoices: SEED_INVOICES,
 
       // Voucher CRUD
       setVouchers: (vouchers) => set({ vouchers }),
-      addVoucher: (voucher) => set((s) => ({ vouchers: [...s.vouchers, voucher] })),
-      updateVoucher: (id, patch) =>
+      addVoucher: (voucher) => {
+        set((s) => ({ vouchers: [...s.vouchers, voucher] }));
+        logActivityDirect('KeToan', 'create', 'voucher', voucher.voucherId, voucher.voucherCode, `Tạo chứng từ ${voucher.voucherCode}`);
+      },
+      updateVoucher: (id, patch) => {
+        const code = get().vouchers.find(v => v.voucherId === id)?.voucherCode ?? id;
         set((s) => ({
           vouchers: s.vouchers.map((v) => (v.voucherId === id ? { ...v, ...patch } : v)),
-        })),
-      deleteVoucher: (id) =>
-        set((s) => ({ vouchers: s.vouchers.filter((v) => v.voucherId !== id) })),
+        }));
+        logActivityDirect('KeToan', 'update', 'voucher', id, code, `Cập nhật chứng từ ${code}`);
+      },
+      deleteVoucher: (id) => {
+        const code = get().vouchers.find(v => v.voucherId === id)?.voucherCode ?? id;
+        set((s) => ({ vouchers: s.vouchers.filter((v) => v.voucherId !== id) }));
+        logActivityDirect('KeToan', 'delete', 'voucher', id, code, `Xóa chứng từ ${code}`);
+      },
 
       // Invoice CRUD
       setInvoices: (invoices) => set({ invoices }),
-      addInvoice: (invoice) => set((s) => ({ invoices: [...s.invoices, invoice] })),
-      updateInvoice: (id, patch) =>
+      addInvoice: (invoice) => {
+        set((s) => ({ invoices: [...s.invoices, invoice] }));
+        logActivityDirect('KeToan', 'create', 'invoice', invoice.invoiceId, invoice.invoiceCode, `Tạo hóa đơn ${invoice.invoiceCode}`);
+      },
+      updateInvoice: (id, patch) => {
+        const code = get().invoices.find(inv => inv.invoiceId === id)?.invoiceCode ?? id;
         set((s) => ({
           invoices: s.invoices.map((inv) => (inv.invoiceId === id ? { ...inv, ...patch } : inv)),
-        })),
-      deleteInvoice: (id) =>
-        set((s) => ({ invoices: s.invoices.filter((inv) => inv.invoiceId !== id) })),
+        }));
+        logActivityDirect('KeToan', 'update', 'invoice', id, code, `Cập nhật hóa đơn ${code}`);
+      },
+      deleteInvoice: (id) => {
+        const code = get().invoices.find(inv => inv.invoiceId === id)?.invoiceCode ?? id;
+        set((s) => ({ invoices: s.invoices.filter((inv) => inv.invoiceId !== id) }));
+        logActivityDirect('KeToan', 'delete', 'invoice', id, code, `Xóa hóa đơn ${code}`);
+      },
 
       // Reset
       resetAll: () => set({ vouchers: SEED_VOUCHERS, invoices: SEED_INVOICES }),

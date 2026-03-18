@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { CashReceipt, CashPayment, AccountReceivable, AccountPayable } from '../types';
+import { logActivityDirect } from '../../../shared/src/hooks/useLogActivity';
 
 // ── Seed Cash Receipts ───────────────────────────────────────
 
@@ -110,6 +111,8 @@ const SEED_AR: AccountReceivable[] = [
     dueDate: '2026-04-10',
     status: 'partial',
     lastPaymentDate: '2026-03-10',
+    createdAt: '2026-03-01T08:00:00Z',
+    updatedAt: '2026-03-10T14:00:00Z',
   },
   {
     arId: 'ar-002',
@@ -122,6 +125,8 @@ const SEED_AR: AccountReceivable[] = [
     dueDate: '2026-03-30',
     status: 'partial',
     lastPaymentDate: '2026-03-12',
+    createdAt: '2026-03-05T09:00:00Z',
+    updatedAt: '2026-03-12T11:00:00Z',
   },
   {
     arId: 'ar-003',
@@ -133,6 +138,8 @@ const SEED_AR: AccountReceivable[] = [
     remainingAmount: 45_000_000,
     dueDate: '2026-03-01',
     status: 'overdue',
+    createdAt: '2026-02-15T10:00:00Z',
+    updatedAt: '2026-02-15T10:00:00Z',
   },
 ];
 
@@ -150,6 +157,8 @@ const SEED_AP: AccountPayable[] = [
     dueDate: '2026-04-15',
     status: 'partial',
     lastPaymentDate: '2026-03-11',
+    createdAt: '2026-03-02T08:00:00Z',
+    updatedAt: '2026-03-11T15:00:00Z',
   },
   {
     apId: 'ap-002',
@@ -161,6 +170,8 @@ const SEED_AP: AccountPayable[] = [
     remainingAmount: 35_000_000,
     dueDate: '2026-04-01',
     status: 'open',
+    createdAt: '2026-03-08T09:00:00Z',
+    updatedAt: '2026-03-08T09:00:00Z',
   },
 ];
 
@@ -200,40 +211,70 @@ const INITIAL_STATE = {
 
 export const useThuChiStore = create<ThuChiState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...INITIAL_STATE,
 
       // Receipt
       setReceipts: (receipts) => set({ receipts }),
-      addReceipt: (r) => set((s) => ({ receipts: [...s.receipts, r] })),
-      updateReceipt: (receiptId, patch) => set((s) => ({
-        receipts: s.receipts.map(r => r.receiptId === receiptId ? { ...r, ...patch } : r),
-      })),
-      deleteReceipt: (receiptId) => set((s) => ({
-        receipts: s.receipts.filter(r => r.receiptId !== receiptId),
-      })),
+      addReceipt: (r) => {
+        set((s) => ({ receipts: [...s.receipts, r] }));
+        logActivityDirect('ThuChi', 'create', 'cashReceipt', r.receiptId, r.receiptCode, `Tạo phiếu thu ${r.receiptCode}`);
+      },
+      updateReceipt: (receiptId, patch) => {
+        const code = get().receipts.find(r => r.receiptId === receiptId)?.receiptCode ?? receiptId;
+        set((s) => ({
+          receipts: s.receipts.map(r => r.receiptId === receiptId ? { ...r, ...patch } : r),
+        }));
+        logActivityDirect('ThuChi', 'update', 'cashReceipt', receiptId, code, `Cập nhật phiếu thu ${code}`);
+      },
+      deleteReceipt: (receiptId) => {
+        const code = get().receipts.find(r => r.receiptId === receiptId)?.receiptCode ?? receiptId;
+        set((s) => ({
+          receipts: s.receipts.filter(r => r.receiptId !== receiptId),
+        }));
+        logActivityDirect('ThuChi', 'delete', 'cashReceipt', receiptId, code, `Xóa phiếu thu ${code}`);
+      },
 
       // Payment
       setPayments: (payments) => set({ payments }),
-      addPayment: (p) => set((s) => ({ payments: [...s.payments, p] })),
-      updatePayment: (paymentId, patch) => set((s) => ({
-        payments: s.payments.map(p => p.paymentId === paymentId ? { ...p, ...patch } : p),
-      })),
-      deletePayment: (paymentId) => set((s) => ({
-        payments: s.payments.filter(p => p.paymentId !== paymentId),
-      })),
+      addPayment: (p) => {
+        set((s) => ({ payments: [...s.payments, p] }));
+        logActivityDirect('ThuChi', 'create', 'cashPayment', p.paymentId, p.paymentCode, `Tạo phiếu chi ${p.paymentCode}`);
+      },
+      updatePayment: (paymentId, patch) => {
+        const code = get().payments.find(p => p.paymentId === paymentId)?.paymentCode ?? paymentId;
+        set((s) => ({
+          payments: s.payments.map(p => p.paymentId === paymentId ? { ...p, ...patch } : p),
+        }));
+        logActivityDirect('ThuChi', 'update', 'cashPayment', paymentId, code, `Cập nhật phiếu chi ${code}`);
+      },
+      deletePayment: (paymentId) => {
+        const code = get().payments.find(p => p.paymentId === paymentId)?.paymentCode ?? paymentId;
+        set((s) => ({
+          payments: s.payments.filter(p => p.paymentId !== paymentId),
+        }));
+        logActivityDirect('ThuChi', 'delete', 'cashPayment', paymentId, code, `Xóa phiếu chi ${code}`);
+      },
 
       // AR
       setReceivables: (receivables) => set({ receivables }),
-      updateReceivable: (arId, patch) => set((s) => ({
-        receivables: s.receivables.map(ar => ar.arId === arId ? { ...ar, ...patch } : ar),
-      })),
+      updateReceivable: (arId, patch) => {
+        const ar = get().receivables.find(a => a.arId === arId);
+        set((s) => ({
+          receivables: s.receivables.map(ar => ar.arId === arId ? { ...ar, ...patch } : ar),
+        }));
+        logActivityDirect('ThuChi', 'update', 'accountReceivable', arId, ar?.customerName ?? arId, `Cập nhật công nợ phải thu ${ar?.customerName ?? arId}`);
+      },
 
       // AP
       setPayables: (payables) => set({ payables }),
-      updatePayable: (apId, patch) => set((s) => ({
-        payables: s.payables.map(ap => ap.apId === apId ? { ...ap, ...patch } : ap),
-      })),
+      updatePayable: (apId, patch) => {
+        const ap = get().payables.find(a => a.apId === apId);
+        set((s) => ({
+          payables: s.payables.map(ap => ap.apId === apId ? { ...ap, ...patch } : ap),
+        }));
+        logActivityDirect('ThuChi', 'update', 'accountPayable', apId, ap?.supplierName ?? apId, `Cập nhật công nợ phải trả ${ap?.supplierName ?? apId}`);
+      },
 
       resetAll: () => set(INITIAL_STATE),
     }),

@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { StockReceipt, StockIssue, StockTransfer } from '../types';
+import { logActivityDirect } from '../../../shared/src/hooks/useLogActivity';
 
 // ── Seed Receipts ────────────────────────────────────────────
 
@@ -164,38 +165,71 @@ const INITIAL_STATE = {
 
 export const useTonKhoStore = create<TonKhoState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...INITIAL_STATE,
 
       // Receipt
       setReceipts: (receipts) => set({ receipts }),
-      addReceipt: (r) => set((s) => ({ receipts: [...s.receipts, r] })),
-      updateReceipt: (receiptId, patch) => set((s) => ({
-        receipts: s.receipts.map(r => r.receiptId === receiptId ? { ...r, ...patch } : r),
-      })),
-      deleteReceipt: (receiptId) => set((s) => ({
-        receipts: s.receipts.filter(r => r.receiptId !== receiptId),
-      })),
+      addReceipt: (r) => {
+        set((s) => ({ receipts: [...s.receipts, r] }));
+        logActivityDirect('TonKho', 'create', 'stockReceipt', r.receiptId, r.receiptCode, `Tạo phiếu nhập kho ${r.receiptCode}`);
+      },
+      updateReceipt: (receiptId, patch) => {
+        const code = get().receipts.find(r => r.receiptId === receiptId)?.receiptCode ?? receiptId;
+        set((s) => ({
+          receipts: s.receipts.map(r => r.receiptId === receiptId ? { ...r, ...patch } : r),
+        }));
+        logActivityDirect('TonKho', 'update', 'stockReceipt', receiptId, code, `Cập nhật PNK ${code}`);
+      },
+      deleteReceipt: (receiptId) => {
+        const code = get().receipts.find(r => r.receiptId === receiptId)?.receiptCode ?? receiptId;
+        set((s) => ({
+          receipts: s.receipts.filter(r => r.receiptId !== receiptId),
+        }));
+        logActivityDirect('TonKho', 'delete', 'stockReceipt', receiptId, code, `Xóa PNK ${code}`);
+      },
 
       // Issue
       setIssues: (issues) => set({ issues }),
-      addIssue: (i) => set((s) => ({ issues: [...s.issues, i] })),
-      updateIssue: (issueId, patch) => set((s) => ({
-        issues: s.issues.map(i => i.issueId === issueId ? { ...i, ...patch } : i),
-      })),
-      deleteIssue: (issueId) => set((s) => ({
-        issues: s.issues.filter(i => i.issueId !== issueId),
-      })),
+      addIssue: (i) => {
+        set((s) => ({ issues: [...s.issues, i] }));
+        logActivityDirect('TonKho', 'create', 'stockIssue', i.issueId, i.issueCode, `Tạo phiếu xuất kho ${i.issueCode}`);
+      },
+      updateIssue: (issueId, patch) => {
+        const code = get().issues.find(i => i.issueId === issueId)?.issueCode ?? issueId;
+        set((s) => ({
+          issues: s.issues.map(i => i.issueId === issueId ? { ...i, ...patch } : i),
+        }));
+        logActivityDirect('TonKho', 'update', 'stockIssue', issueId, code, `Cập nhật PXK ${code}`);
+      },
+      deleteIssue: (issueId) => {
+        const code = get().issues.find(i => i.issueId === issueId)?.issueCode ?? issueId;
+        set((s) => ({
+          issues: s.issues.filter(i => i.issueId !== issueId),
+        }));
+        logActivityDirect('TonKho', 'delete', 'stockIssue', issueId, code, `Xóa PXK ${code}`);
+      },
 
       // Transfer
       setTransfers: (transfers) => set({ transfers }),
-      addTransfer: (t) => set((s) => ({ transfers: [...s.transfers, t] })),
-      updateTransfer: (transferId, patch) => set((s) => ({
-        transfers: s.transfers.map(t => t.transferId === transferId ? { ...t, ...patch } : t),
-      })),
-      deleteTransfer: (transferId) => set((s) => ({
-        transfers: s.transfers.filter(t => t.transferId !== transferId),
-      })),
+      addTransfer: (t) => {
+        set((s) => ({ transfers: [...s.transfers, t] }));
+        logActivityDirect('TonKho', 'create', 'stockTransfer', t.transferId, t.transferCode, `Tạo phiếu chuyển kho ${t.transferCode}`);
+      },
+      updateTransfer: (transferId, patch) => {
+        const code = get().transfers.find(t => t.transferId === transferId)?.transferCode ?? transferId;
+        set((s) => ({
+          transfers: s.transfers.map(t => t.transferId === transferId ? { ...t, ...patch } : t),
+        }));
+        logActivityDirect('TonKho', 'update', 'stockTransfer', transferId, code, `Cập nhật PCK ${code}`);
+      },
+      deleteTransfer: (transferId) => {
+        const code = get().transfers.find(t => t.transferId === transferId)?.transferCode ?? transferId;
+        set((s) => ({
+          transfers: s.transfers.filter(t => t.transferId !== transferId),
+        }));
+        logActivityDirect('TonKho', 'delete', 'stockTransfer', transferId, code, `Xóa PCK ${code}`);
+      },
 
       resetAll: () => set(INITIAL_STATE),
     }),

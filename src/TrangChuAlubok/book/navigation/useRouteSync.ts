@@ -77,11 +77,11 @@ export function useRouteSync() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const navigateToPage = useCallback((page: number) => {
+  const navigateToPage = useCallback((page: number, initialTab?: string) => {
     const mod = getModuleByPage(page);
     if (!mod) return;
 
-    const tab = mod.defaultTab ?? null;
+    const tab = initialTab ?? mod.defaultTab ?? null;
     let tabSlug: string | undefined;
     if (tab && mod.tabs) {
       tabSlug = getTabByKey(mod, tab)?.slug;

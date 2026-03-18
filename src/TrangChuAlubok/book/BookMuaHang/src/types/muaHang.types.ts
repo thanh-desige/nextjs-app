@@ -123,6 +123,9 @@ export interface PurchaseOrder {
   updatedAt: string;
   confirmedBy?: string;
   confirmedAt?: string;
+  completedAt?: string;
+  receivedAt?: string;
+  cancelledAt?: string;
 }
 
 // ── Tab type ─────────────────────────────────────────────────

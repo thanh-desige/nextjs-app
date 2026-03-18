@@ -1,7 +1,7 @@
 # ALUBOK — PROJECT ROADMAP (Thứ tự ưu tiên)
 
 > Roadmap tổng thể dự án — định hướng thứ tự build các module
-> Cập nhật: **17/03/2026**
+> Cập nhật: **19/03/2026**
 > Tham chiếu: [PERMISSION_CATALOG.md](PERMISSION_CATALOG.md) · [BOOK_STRUCTURE.md](BOOK_STRUCTURE.md)
 
 ---
@@ -28,7 +28,8 @@
 | BookTonKho/ | ✅ Phase B3 hoàn chỉnh | 29 | Nhập/Xuất/Chuyển kho + Tồn kho + Báo cáo (18 source + 2 test files) |
 | BookThuChi/ | ✅ Phase B4 hoàn chỉnh | 34 | Thu chi + Công nợ (17 source + 2 test files) |
 | BookKeToan/ | ✅ Phase C2 hoàn chỉnh | 31 | Chứng từ + Hóa đơn (14 source + 2 test files) |
-| BookTongQuan/ | ⬜ Chưa bắt đầu | — | Dashboard (cần data từ các module) |
+| BookSanXuatThiCong/ | ✅ Phase SX hoàn chỉnh | 54 | Lệnh SX + Vật tư + Thi công + Nghiệm thu (19 source + 2 test files) |
+| BookTongQuan/ | ✅ Phase D1 hoàn chỉnh | 30 | Dashboard: 6 KPI + chart + flow + alerts + quick access |
 | QuanTriAdmin/ | ✅ UI hoàn chỉnh | — | 16 pages, dark theme, route `/admin` (tách biệt Book) |
 
 ---
@@ -38,6 +39,9 @@
 ```
 Thiết kế (CAD) → BOM → Báo giá → Đơn hàng → Mua hàng → Nhập kho → Xuất kho → Thu tiền → Kế toán
      ✅            ✅      ✅         ✅          ✅          ✅         ✅        ✅         ✅
+
+Sản xuất (Lệnh SX) → Vật tư → Xuất dùng → Thi công → Nghiệm thu → Bàn giao
+         ✅            ✅       ✅          ✅          ✅           ✅
 
 Foundation: shared/ ✅ → DanhMuc/ ✅ → ThietLap/ ✅
 ```

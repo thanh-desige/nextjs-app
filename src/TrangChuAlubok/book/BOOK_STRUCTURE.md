@@ -29,7 +29,9 @@ book/
 │   └── ROADMAP.md
 ├── BookThuChi/                   ← [SIDEBAR] Thu - chi
 │   └── ROADMAP.md
-├── BookKeToan/                   ← [SIDEBAR] Kế toán (chưa có trên sidebar)
+├── BookKeToan/                   ← [SIDEBAR] Kế toán
+│   └── ROADMAP.md
+├── BookSanXuatThiCong/           ← [SIDEBAR] Sản xuất & Thi công
 │   └── ROADMAP.md
 └── ThietLap/                     ← [SETTINGS] Thiết lập hệ thống (chưa có trên sidebar)
     └── ROADMAP.md
@@ -41,16 +43,18 @@ book/
 
 ## Chi tiết từng module
 
-### 1. shared/ — Code dùng chung ✅ Phase F1
+### 1. shared/ — Code dùng chung ✅ Phase F1 + T1
 
 | Vai trò | Nội dung |
 |---------|----------|
-| Không hiển thị UI | Types: 7 files (permission, org, user, member, role, session, audit) |
+| Không hiển thị UI | Types: 8 files (permission, org, user, member, role, session, audit, time) |
 | | Constants: `PERMISSION_CATALOG` (67 resources), `DEFAULT_APP_ROLES` (6), `DEFAULT_INTERNAL_ROLES` (6) |
 | | Utils: `hasPermission()`, `matchPermission()`, `expandRole()`, `isValidPermission()` |
 | | Guards: `requirePermission()`, `requireOrgMember()`, `requireModuleAccess()`, `checkBusinessPolicy()` |
-| | Hooks: `usePermission()`, `useCurrentUser()`, `useCurrentOrg()`, `useModuleAccess()` |
-| | Tests: 85 tests, 3 suites |
+| | Hooks: `usePermission()`, `useCurrentUser()`, `useCurrentOrg()`, `useModuleAccess()`, `useLogActivity()` |
+| | Services: `timeService.ts` (11 functions), `activityLogStore.ts` (cross-cutting event log) |
+| | UI: `DateRangeFilter`, `DateTimeDisplay`, `DueBadge`, `ActivityTimeline` |
+| | Tests: 148 tests, 5 suites |
 
 ### 2. DanhMuc/ — Nhóm A: Danh muc (Master Data) ✅ Phase F2
 
@@ -128,12 +132,27 @@ book/
 
 | Catalog | Resources | Sidebar |
 |---------|-----------|---------|
-| B19 | `accounting.voucher` | ⚠️ Chưa có trên sidebar |
+| B19 | `accounting.voucher` | ✅ "Kế toán" (page 9) |
 | B20 | `accounting.invoice` | |
 
 > Chứng từ kế toán, hóa đơn. Reports: C10 (`report.accounting`).
 
-### 10. ThietLap/ — Thiết lập hệ thống (**cấp Tenant**) ✅ Phase F3
+### 10. BookSanXuatThiCong/ — Sản xuất & Thi công ✅ Phase SX
+
+| Catalog | Resources | Sidebar |
+|---------|-----------|---------|
+| B21 | `production.project` | ✅ "Sản xuất" (page 10) |
+| B22 | `production.order` | |
+| B23 | `production.material_plan` | |
+| B24 | `construction.installation` | |
+| B25 | `construction.acceptance` | |
+| C12 | `report.production` | |
+
+> Lệnh sản xuất, kế hoạch vật tư, xuất dùng, thi công lắp đặt, nghiệm thu bàn giao, báo cáo.
+> Dùng SubSidebar cấp 2 dọc (7 section) thay vì ModuleTabBar ngang.
+> 19 source files, 2 test files (54 tests), Zustand + persist store.
+
+### 11. ThietLap/ — Thiết lập hệ thống (**cấp Tenant**) ✅ Phase F3
 
 | Catalog | Resources | Sidebar |
 |---------|-----------|---------|
@@ -209,7 +228,7 @@ Reports (nhóm C) **không tách module riêng**, mà nằm trong module tương
 |--------|--------|----------|----------|
 | shared | ✅ | ✅ | ✅ (20 files, 85 tests) |
 | DanhMuc | ✅ | ✅ | ✅ (19 files, 37 tests) |
-| BookTongQuan | ✅ | ❌ | ❌ |
+| BookTongQuan | ✅ | ✅ | ✅ (10 files, 30 tests) |
 | BookThietKeBocTach | ✅ | ✅ | ✅ (~50+ files) |
 | BookBanHang | ✅ | ✅ | ✅ (15 files, 26 tests) |
 | BookMuaHang | ✅ | ❌ | ❌ |

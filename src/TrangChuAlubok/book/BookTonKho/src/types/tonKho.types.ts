@@ -63,6 +63,7 @@ export interface StockReceipt {
   updatedAt: string;
   confirmedBy?: string;
   confirmedAt?: string;
+  receivedAt?: string;            // Thời điểm thực nhận hàng
 }
 
 // ── Stock Issue (Phiếu xuất kho) ─────────────────────────────

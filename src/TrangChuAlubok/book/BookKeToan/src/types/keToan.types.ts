@@ -83,6 +83,7 @@ export interface AccountingVoucher {
   rejectedAt?: string;
   closedBy?: string;
   closedAt?: string;
+  postedAt?: string;           // Thời điểm ghi sổ
 }
 
 // ── Invoice Item ────────────────────────────────────────────
@@ -120,6 +121,7 @@ export interface AccountingInvoice {
   approvedAt?: string;
   cancelledBy?: string;
   cancelledAt?: string;
+  paidAt?: string;             // Thời điểm thanh toán
 }
 
 // ── Tab / View ──────────────────────────────────────────────

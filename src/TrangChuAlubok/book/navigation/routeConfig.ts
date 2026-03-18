@@ -106,6 +106,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
       { key: 'reports',  slug: 'bc-ke-toan',   label: 'BC Kế toán',       group: 'Báo cáo' },
     ],
   },
+  { page: 10, slug: 'san-xuat', label: 'Sản xuất & Thi công' },
 ];
 
 // ── Lookup helpers ──────────────────────────────────────────

@@ -12,20 +12,21 @@ import MuaHangPage from "../MuaHangPage/MuaHangPage";
 import DanhMucPage from "./DanhMuc/src/ui/DanhMucPage";
 import ThietLapPage from "./ThietLap/src/ui/ThietLapPage";
 
-import BookTongQuan from "./BookTongQuan";
+import BookTongQuanPage from "./BookTongQuan/src/ui/BookTongQuanPage";
 import BookMuaHangPage from "./BookMuaHang/src/ui/BookMuaHangPage";
 import BookBanHangPage from "./BookBanHang/src/ui/BookBanHangPage";
 import BookThietKeBocTach from "./BookThietKeBocTach";
 import BookThuChiPage from "./BookThuChi/src/ui/BookThuChiPage";
 import BookTonKhoPage from "./BookTonKho/src/ui/BookTonKhoPage";
 import BookKeToanPage from "./BookKeToan/src/ui/BookKeToanPage";
+import BookSanXuatThiCongPage from "./BookSanXuatThiCong/src/ui/BookSanXuatThiCongPage";
 import { useRouteSync } from "./navigation";
 
 export default function App(): React.ReactElement {
   const { page, tab, isInDashboard, navigateToPage, navigateToTab, navigateToHome } = useRouteSync();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
 
-  // Special: MuaHang shop page (fullscreen, outside route system)
+  // Fullscreen shop khi vào từ trang chủ (TrangChuAlubok)
   const [isMuaHangShop, setIsMuaHangShop] = useState(false);
 
   const goToMuaHang = (): void => {
@@ -37,7 +38,7 @@ export default function App(): React.ReactElement {
     navigateToHome();
   };
 
-  // Nếu đang ở trang Mua hàng shop, hiển thị fullscreen
+  // Nếu đang ở trang Mua hàng shop fullscreen (từ trang chủ)
   if (isMuaHangShop) {
     return <MuaHangPage onBackClick={goToHome} />;
   }
@@ -118,11 +119,11 @@ export default function App(): React.ReactElement {
           style={{
             flex: 1,
             position: "relative",
-            overflow: page === 2 || page === 3 || page === 4 || page === 5 || page === 6 || page === 7 || page === 8 || page === 9 ? "hidden" : "auto",
+            overflow: page === 1 || page === 2 || page === 3 || page === 4 || page === 5 || page === 6 || page === 7 || page === 8 || page === 9 || page === 10 ? "hidden" : "auto",
           }}
         >
-          {page === 1 && <BookTongQuan />}
-          {page === 2 && <BookMuaHangPage activeTab={tab ?? 'orders'} onTabChange={navigateToTab} onOpenShop={goToMuaHang} />}
+          {page === 1 && <BookTongQuanPage onNavigate={(p, t) => { navigateToPage(p); if (t) navigateToTab(t); }} />}
+          {page === 2 && <BookMuaHangPage activeTab={tab ?? 'orders'} onTabChange={navigateToTab} />}
           {page === 3 && <BookBanHangPage activeTab={tab ?? 'quotes'} onTabChange={navigateToTab} />}
           {page === 4 && (
             <BookThietKeBocTach sidebarCollapsed={sidebarCollapsed} />
@@ -132,6 +133,7 @@ export default function App(): React.ReactElement {
           {page === 7 && <DanhMucPage activeTab={tab ?? 'customer'} onTabChange={navigateToTab} />}
           {page === 8 && <ThietLapPage activeTab={tab ?? 'users'} onTabChange={navigateToTab} />}
           {page === 9 && <BookKeToanPage activeTab={tab ?? 'vouchers'} onTabChange={navigateToTab} />}
+          {page === 10 && <BookSanXuatThiCongPage />}
         </div>
       </div>
     </div>

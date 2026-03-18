@@ -68,6 +68,7 @@ export interface Quote {
   rejectedBy?: string;
   rejectedAt?: string;
   rejectedReason?: string;
+  cancelledAt?: string;
 }
 
 // ── Sales Order Status Workflow ──────────────────────────────
@@ -130,6 +131,9 @@ export interface SalesOrder {
   updatedAt: string;
   confirmedBy?: string;
   confirmedAt?: string;
+  completedAt?: string;
+  deliveredAt?: string;
+  cancelledAt?: string;
 }
 
 // ── Tab type ─────────────────────────────────────────────────

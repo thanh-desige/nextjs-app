@@ -215,6 +215,28 @@ const IconKeToan = () => (
   </svg>
 );
 
+const IconSanXuat = () => (
+  <svg
+    width="40"
+    height="38"
+    viewBox="0 0 40 38"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M0 4C0 1.79086 1.79086 0 4 0H40V38H4C1.79086 38 0 36.2091 0 34V4Z"
+      fill="#386D30"
+    />
+    <path
+      d="M12 28H28M14 24H26M16 10V14L20 12L24 14V10M20 14V20M14 20H26C26 20 27 20 27 21V24H13V21C13 20 14 20 14 20Z"
+      stroke="black"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 interface MenuItem {
   id: number;
   name: string;
@@ -231,6 +253,7 @@ const MENU: MenuItem[] = [
   { id: 7, name: "Danh mục", icon: <IconDanhMuc /> },
   { id: 8, name: "Thiết lập", icon: <IconThietLap /> },
   { id: 9, name: "Kế toán", icon: <IconKeToan /> },
+  { id: 10, name: "Sản xuất", icon: <IconSanXuat /> },
 ];
 
 interface ArrowProps {

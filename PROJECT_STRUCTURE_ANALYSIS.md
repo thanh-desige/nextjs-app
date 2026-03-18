@@ -1,8 +1,8 @@
 # 📁 CẤU TRÚC DỰ ÁN NEXTJS-APP (ALUBOK)
 
-> Cập nhật: **11/03/2026** — Scan trực tiếp từ cây thư mục thực tế
-> Tổng: **~500 files** (455 .ts/.tsx, 35 .md, còn lại config/assets)
-> Tests: **1189/1189 pass, 38 suites**
+> Cập nhật: **19/03/2026** — Scan trực tiếp từ cây thư mục thực tế
+> Tổng: **~530 files** (485 .ts/.tsx, 35 .md, còn lại config/assets)
+> Tests: **1273/1273 pass, 41 suites**
 
 ---
 
@@ -131,17 +131,19 @@ src/PlatformAdmin/                  # ⚡ QuanTriAdmin — Platform Admin ALUBOK
     ├── BookTongQuan.tsx            # 📊 Sổ Tổng Quan / Dashboard (placeholder)
     ├── BookTonKho.tsx              # 📦 Sổ Tồn Kho (placeholder)
     │
-    ├── shared/                     # [INTERNAL] Types + RBAC guards dùng chung ✅ Phase F1
+    ├── shared/                     # [INTERNAL] Types + RBAC + Time System dùng chung ✅ Phase F1 + T1
     │   ├── ROADMAP.md
     │   ├── docs_history_commit.md
     │   └── src/
     │       ├── index.ts            # Main barrel export
-    │       ├── types/              # 8 files: permission, org, user, member, role, session, audit + index
+    │       ├── types/              # 9 files: permission, org, user, member, role, session, audit, time + index
     │       ├── constants/          # permissionCatalog (67 resources), defaultRoles (12 roles)
     │       ├── utils/              # permissionUtils (has, match, expand, validate)
+    │       ├── services/           # timeService.ts (11 functions), activityLogStore.ts (event log)
     │       ├── guards/             # requirePermission, requireModuleAccess, checkBusinessPolicy
-    │       ├── hooks/              # usePermission, useCurrentUser, useCurrentOrg
-    │       └── tests/             # 85 tests, 3 suites
+    │       ├── hooks/              # usePermission, useCurrentUser, useCurrentOrg, useLogActivity
+    │       ├── ui/                 # DateRangeFilter, DateTimeDisplay, DueBadge, ActivityTimeline
+    │       └── tests/             # 148 tests, 5 suites
     ├── DanhMuc/                    # [INTERNAL] Nhóm A — Master Data (12 resources)
     │   ├── ROADMAP.md
     │   ├── docs_history_commit.md
@@ -152,9 +154,16 @@ src/PlatformAdmin/                  # ⚡ QuanTriAdmin — Platform Admin ALUBOK
     │       ├── store/              # danhMucStore.ts (Zustand + persist, 12 arrays)
     │       ├── ui/                 # DataTable, EntityForm, StatusBadge, CategoryPage, DanhMucPage, categoryConfigs
     │       └── tests/             # 37 tests, 3 suites
-    ├── BookTongQuan/               # [SIDEBAR] Dashboard tổng hợp
+    ├── BookTongQuan/               # [SIDEBAR] Dashboard tổng hợp ✅ Phase D1
     │   ├── ROADMAP.md
-    │   └── docs_history_commit.md
+    │   ├── docs_history_commit.md
+    │   └── src/
+    │       ├── index.ts
+    │       ├── types/             # tongQuan.types.ts (KpiCard, AlertItem, FlowStep, ChartBar, QuickAction)
+    │       ├── helpers/           # dashboardHelpers.ts (formatCurrency, sumField, countOverdue, calcProductionProgress)
+    │       ├── hooks/             # useDashboardData.ts (aggregates 6 module stores)
+    │       ├── ui/                # 6 components (Page, KpiCards, RevenueChart, OrderFlowWidget, AlertsWidget, QuickAccess)
+    │       └── tests/             # 30 tests, 1 suite
     ├── BookBanHang/                # [SIDEBAR] Báo giá + Đơn bán hàng ✅ Phase B1
     │   ├── ROADMAP.md
     │   ├── docs_history_commit.md
@@ -200,6 +209,15 @@ src/PlatformAdmin/                  # ⚡ QuanTriAdmin — Platform Admin ALUBOK
     │       ├── store/              # keToanStore.ts (Zustand + persist, 4 vouchers + 3 invoices seed)
     │       ├── ui/                 # 9 components (Page, VoucherList/Form/Detail, InvoiceList/Form/Detail, LedgerPage, Report)
     │       └── tests/             # 31 tests, 2 suites
+    ├── BookSanXuatThiCong/         # [SIDEBAR] Sản xuất & Thi công ✅ Phase SX
+    │   ├── ROADMAP.md
+    │   ├── docs_history_commit.md
+    │   └── src/
+    │       ├── index.ts            # barrel export
+    │       ├── types/              # sanXuatThiCong.types.ts (Project/PO/MaterialPlan/Installation/Acceptance, 7 status types, helpers)
+    │       ├── store/              # sanXuatThiCongStore.ts (Zustand + persist, 3 projects + 3 PO + 2 plans + 2 issues + 2 installs + 1 acceptance)
+    │       ├── ui/                 # 14 components (Page, SubSidebar, ProgressOverview, PO List/Form/Detail, MaterialPlan, MaterialIssue, Install List/Form/Detail, Acceptance List/Form/Detail, Report)
+    │       └── tests/             # 54 tests, 2 suites
     ├── ThietLap/                   # [SETTINGS] Quản trị user, role, permission ✅ Phase F3
     │   ├── ROADMAP.md
     │   ├── docs_history_commit.md
@@ -858,13 +876,13 @@ src/TrangChuAlubok/book/BookThietKeBocTach/src/
 
 | Metric | Giá trị |
 |--------|---------|
-| Tổng files | ~500 |
-| Files .ts/.tsx | ~455 |
-| Files .md | 33 |
-| Tests | **1124/1124 pass** |
-| Test suites | **34** |
-| Test time | **~8s** |
-| Module folders (book/) | 10 (shared, DanhMuc, BookTongQuan, BookThietKeBocTach, BookBanHang, BookMuaHang, BookTonKho, BookThuChi, BookKeToan, ThietLap) |
+| Tổng files | ~530 |
+| Files .ts/.tsx | ~485 |
+| Files .md | 35 |
+| Tests | **1273/1273 pass** |
+| Test suites | **41** |
+| Test time | **~16s** |
+| Module folders (book/) | 11 (shared, DanhMuc, BookTongQuan, BookThietKeBocTach, BookBanHang, BookMuaHang, BookTonKho, BookThuChi, BookKeToan, BookSanXuatThiCong, ThietLap) |
 | Thư mục cấp 1 (trong BookThietKeBocTach/src/) | 15 (core, domain, door-engines, systems, adapters, analysis, hooks, store, ui, docs, tests, types, assets, __tests__) |
 | Entity types | 8 (line, rect, circle, arc, ellipse, polyline, text, dimension) |
 | Export formats | 5 (JSON, DXF, SVG, PNG, PDF) |

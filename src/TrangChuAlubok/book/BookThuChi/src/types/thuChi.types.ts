@@ -107,6 +107,8 @@ export interface AccountReceivable {
   status: DebtStatus;
   lastPaymentDate?: string;
   notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ── Accounts Payable (Công nợ phải trả — B18) ────────────────
@@ -123,6 +125,8 @@ export interface AccountPayable {
   status: DebtStatus;
   lastPaymentDate?: string;
   notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ── Tab type ─────────────────────────────────────────────────

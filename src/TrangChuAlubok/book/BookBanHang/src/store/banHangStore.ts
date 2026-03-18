@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Quote, SalesOrder } from '../types';
+import { logActivityDirect } from '../../../shared/src/hooks/useLogActivity';
 
 // ── Seed Quotes ──────────────────────────────────────────────
 
@@ -135,26 +136,48 @@ const INITIAL_STATE = {
 
 export const useBanHangStore = create<BanHangState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...INITIAL_STATE,
 
       setQuotes: (quotes) => set({ quotes }),
-      addQuote: (q) => set((s) => ({ quotes: [...s.quotes, q] })),
-      updateQuote: (quoteId, patch) => set((s) => ({
-        quotes: s.quotes.map(q => q.quoteId === quoteId ? { ...q, ...patch } : q),
-      })),
-      deleteQuote: (quoteId) => set((s) => ({
-        quotes: s.quotes.filter(q => q.quoteId !== quoteId),
-      })),
+      addQuote: (q) => {
+        set((s) => ({ quotes: [...s.quotes, q] }));
+        logActivityDirect('BanHang', 'create', 'quote', q.quoteId, q.quoteCode, `Tạo báo giá ${q.quoteCode}`);
+      },
+      updateQuote: (quoteId, patch) => {
+        const code = get().quotes.find(q => q.quoteId === quoteId)?.quoteCode ?? quoteId;
+        set((s) => ({
+          quotes: s.quotes.map(q => q.quoteId === quoteId ? { ...q, ...patch } : q),
+        }));
+        logActivityDirect('BanHang', 'update', 'quote', quoteId, code, `Cập nhật báo giá ${code}`);
+      },
+      deleteQuote: (quoteId) => {
+        const code = get().quotes.find(q => q.quoteId === quoteId)?.quoteCode ?? quoteId;
+        set((s) => ({
+          quotes: s.quotes.filter(q => q.quoteId !== quoteId),
+        }));
+        logActivityDirect('BanHang', 'delete', 'quote', quoteId, code, `Xóa báo giá ${code}`);
+      },
 
       setOrders: (orders) => set({ orders }),
-      addOrder: (o) => set((s) => ({ orders: [...s.orders, o] })),
-      updateOrder: (orderId, patch) => set((s) => ({
-        orders: s.orders.map(o => o.orderId === orderId ? { ...o, ...patch } : o),
-      })),
-      deleteOrder: (orderId) => set((s) => ({
-        orders: s.orders.filter(o => o.orderId !== orderId),
-      })),
+      addOrder: (o) => {
+        set((s) => ({ orders: [...s.orders, o] }));
+        logActivityDirect('BanHang', 'create', 'salesOrder', o.orderId, o.orderCode, `Tạo đơn hàng ${o.orderCode}`);
+      },
+      updateOrder: (orderId, patch) => {
+        const code = get().orders.find(o => o.orderId === orderId)?.orderCode ?? orderId;
+        set((s) => ({
+          orders: s.orders.map(o => o.orderId === orderId ? { ...o, ...patch } : o),
+        }));
+        logActivityDirect('BanHang', 'update', 'salesOrder', orderId, code, `Cập nhật đơn hàng ${code}`);
+      },
+      deleteOrder: (orderId) => {
+        const code = get().orders.find(o => o.orderId === orderId)?.orderCode ?? orderId;
+        set((s) => ({
+          orders: s.orders.filter(o => o.orderId !== orderId),
+        }));
+        logActivityDirect('BanHang', 'delete', 'salesOrder', orderId, code, `Xóa đơn hàng ${code}`);
+      },
 
       resetAll: () => set(INITIAL_STATE),
     }),
