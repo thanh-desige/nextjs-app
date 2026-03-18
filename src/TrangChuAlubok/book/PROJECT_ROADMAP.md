@@ -1,7 +1,7 @@
 # ALUBOK — PROJECT ROADMAP (Thứ tự ưu tiên)
 
 > Roadmap tổng thể dự án — định hướng thứ tự build các module
-> Cập nhật: **10/03/2026**
+> Cập nhật: **17/03/2026**
 > Tham chiếu: [PERMISSION_CATALOG.md](PERMISSION_CATALOG.md) · [BOOK_STRUCTURE.md](BOOK_STRUCTURE.md)
 
 ---
@@ -9,7 +9,8 @@
 ## Tổng quan dự án
 
 **ALUBOK** — Hệ thống ERP cho ngành nhôm kính
-- **10 modules**, **43 resources**, **~250 permissions**, **6 default roles**
+- **10 modules** (Book) + **QuanTriAdmin** (app riêng `/admin`)
+- **59 resources** (43 app A–D + 16 platform E), **~350 permissions**, **6 app roles + 6 internal admin roles**
 - Stack: Next.js 15 + React 19 + TypeScript 5 + Tailwind CSS 4 + Zustand 5
 
 ---
@@ -19,15 +20,16 @@
 | Module | Trạng thái | Tests | Ghi chú |
 |--------|-----------|-------|---------|
 | BookThietKeBocTach | ✅ Core hoàn chỉnh | 875/875 | CAD engine + BOM + 5 Export formats |
-| shared/ | ⬜ Chưa bắt đầu | — | Foundation cho tất cả module |
-| DanhMuc/ | ⬜ Chưa bắt đầu | — | 12 master data resources |
-| ThietLap/ | ⬜ Chưa bắt đầu | — | RBAC UI (3 màn hình) |
-| BookBanHang/ | ⬜ Chưa bắt đầu | — | Báo giá + Đơn hàng |
-| BookMuaHang/ | 🟡 Có code sẵn | — | MuaHangPage + 7 categories |
-| BookTonKho/ | ⬜ Chưa bắt đầu | — | 5 resources kho |
-| BookThuChi/ | ⬜ Chưa bắt đầu | — | Thu chi + Công nợ |
-| BookKeToan/ | ⬜ Chưa bắt đầu | — | Chứng từ + Hóa đơn |
+| shared/ | ✅ Phase F1 hoàn chỉnh | 85 | Types + RBAC + Guards + Hooks |
+| DanhMuc/ | ✅ Phase F2 hoàn chỉnh | 37 | 12 master data resources, generic CRUD |
+| ThietLap/ | ✅ Phase F3 hoàn chỉnh | 36 | 8 tabs RBAC UI (D1-D8), 15 source files |
+| BookBanHang/ | ✅ Phase B1 hoàn chỉnh | 26 | Báo giá + Đơn hàng (13 source + 2 test files) |
+| BookMuaHang/ | ✅ Phase B2 hoàn chỉnh | 33 | Đơn mua + Yêu cầu mua + Báo cáo (13 source + 2 test files) |
+| BookTonKho/ | ✅ Phase B3 hoàn chỉnh | 29 | Nhập/Xuất/Chuyển kho + Tồn kho + Báo cáo (18 source + 2 test files) |
+| BookThuChi/ | ✅ Phase B4 hoàn chỉnh | 34 | Thu chi + Công nợ (17 source + 2 test files) |
+| BookKeToan/ | ✅ Phase C2 hoàn chỉnh | 31 | Chứng từ + Hóa đơn (14 source + 2 test files) |
 | BookTongQuan/ | ⬜ Chưa bắt đầu | — | Dashboard (cần data từ các module) |
+| QuanTriAdmin/ | ✅ UI hoàn chỉnh | — | 16 pages, dark theme, route `/admin` (tách biệt Book) |
 
 ---
 
@@ -35,7 +37,9 @@
 
 ```
 Thiết kế (CAD) → BOM → Báo giá → Đơn hàng → Mua hàng → Nhập kho → Xuất kho → Thu tiền → Kế toán
-     ✅            ✅      ⬜         ⬜          ⬜          ⬜         ⬜        ⬜         ⬜
+     ✅            ✅      ✅         ✅          ✅          ✅         ✅        ✅         ✅
+
+Foundation: shared/ ✅ → DanhMuc/ ✅ → ThietLap/ ✅
 ```
 
 > Mục tiêu: nối dài chuỗi giá trị này — từ thiết kế đến thu tiền.
@@ -55,7 +59,7 @@ Thiết kế (CAD) → BOM → Báo giá → Đơn hàng → Mua hàng → Nhậ
               │               │               │
          ┌────┴────┐    ┌────┴────┐    ┌─────┴─────┐
          │ DanhMuc │    │ ThietLap│    │  BocTach   │
-         │ (A1-12) │    │ (D1-11) │    │  (B1-B5)  │
+         │ (A1-12) │    │ (D1-8)  │    │  (B1-B5)  │
          └────┬────┘    └─────────┘    └─────┬─────┘
               │                              │
     ┌─────────┼─────────┐              BOM data
@@ -218,9 +222,10 @@ Thiết kế (CAD) → BOM → Báo giá → Đơn hàng → Mua hàng → Nhậ
 |---|------|-----------|
 | D2.1 | Mẫu in (báo giá, hóa đơn, phiếu xuất) | D7 |
 | D2.2 | Nhật ký thao tác (audit log) | D8 |
-| D2.3 | Sao lưu / khôi phục | D9 |
-| D2.4 | Kết nối bên ngoài (API, webhook) | D10 |
-| D2.5 | Gói dịch vụ / thanh toán | D11 |
+| D2.3 | Tab "Gói dịch vụ hiện tại" (read-only: tên gói, hạn, số user) | D4 (setting.org) |
+
+> **Thay đổi**: D2.3–D2.5 cũ (Sao lưu D9, Kết nối D10, Gói dịch vụ D11) đã chuyển sang **QuanTriAdmin** (Nhóm E).
+> ThietLap chỉ còn D1–D8. Xem `PERMISSION_CATALOG.md` Nhóm E và `src/PlatformAdmin/` cho chi tiết.
 
 ---
 

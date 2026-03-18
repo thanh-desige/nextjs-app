@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from "react";
 import {
-  FiMenu,
   FiSettings,
   FiBell,
   FiUser,
@@ -10,36 +9,36 @@ import {
 import Sidebar from "./Sidebar";
 import TrangChuAlubok from "../TrangChuAlubok";
 import MuaHangPage from "../MuaHangPage/MuaHangPage";
+import DanhMucPage from "./DanhMuc/src/ui/DanhMucPage";
+import ThietLapPage from "./ThietLap/src/ui/ThietLapPage";
 
 import BookTongQuan from "./BookTongQuan";
-import BookMuaHang from "./BookMuaHang";
-import BookBanHang from "./BookBanHang";
+import BookMuaHangPage from "./BookMuaHang/src/ui/BookMuaHangPage";
+import BookBanHangPage from "./BookBanHang/src/ui/BookBanHangPage";
 import BookThietKeBocTach from "./BookThietKeBocTach";
-import BookThuChi from "./BookThuChi";
-import BookTonKho from "./BookTonKho";
+import BookThuChiPage from "./BookThuChi/src/ui/BookThuChiPage";
+import BookTonKhoPage from "./BookTonKho/src/ui/BookTonKhoPage";
+import BookKeToanPage from "./BookKeToan/src/ui/BookKeToanPage";
+import { useRouteSync } from "./navigation";
 
 export default function App(): React.ReactElement {
-  const [page, setPage] = useState<number>(0);
-  const [isInDashboard, setIsInDashboard] = useState<boolean>(false);
+  const { page, tab, isInDashboard, navigateToPage, navigateToTab, navigateToHome } = useRouteSync();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
 
-  const goToDashboard = (pageNum: number): void => {
-    setIsInDashboard(true);
-    setPage(pageNum);
-  };
+  // Special: MuaHang shop page (fullscreen, outside route system)
+  const [isMuaHangShop, setIsMuaHangShop] = useState(false);
 
   const goToMuaHang = (): void => {
-    setIsInDashboard(false);
-    setPage(99);
+    setIsMuaHangShop(true);
   };
 
   const goToHome = (): void => {
-    setIsInDashboard(false);
-    setPage(0);
+    setIsMuaHangShop(false);
+    navigateToHome();
   };
 
-  // Nếu đang ở trang Mua hàng, hiển thị fullscreen
-  if (page === 99) {
+  // Nếu đang ở trang Mua hàng shop, hiển thị fullscreen
+  if (isMuaHangShop) {
     return <MuaHangPage onBackClick={goToHome} />;
   }
 
@@ -47,7 +46,7 @@ export default function App(): React.ReactElement {
   if (!isInDashboard) {
     return (
       <TrangChuAlubok
-        onBookClick={() => goToDashboard(1)}
+        onBookClick={() => navigateToPage(1)}
         onBuyClick={goToMuaHang}
       />
     );
@@ -112,24 +111,27 @@ export default function App(): React.ReactElement {
       >
         <Sidebar
           active={page}
-          onSelect={setPage}
+          onSelect={navigateToPage}
           onCollapse={setSidebarCollapsed}
         />
         <div
           style={{
             flex: 1,
             position: "relative",
-            overflow: page === 4 ? "hidden" : "auto",
+            overflow: page === 2 || page === 3 || page === 4 || page === 5 || page === 6 || page === 7 || page === 8 || page === 9 ? "hidden" : "auto",
           }}
         >
           {page === 1 && <BookTongQuan />}
-          {page === 2 && <BookMuaHang />}
-          {page === 3 && <BookBanHang />}
+          {page === 2 && <BookMuaHangPage activeTab={tab ?? 'orders'} onTabChange={navigateToTab} onOpenShop={goToMuaHang} />}
+          {page === 3 && <BookBanHangPage activeTab={tab ?? 'quotes'} onTabChange={navigateToTab} />}
           {page === 4 && (
             <BookThietKeBocTach sidebarCollapsed={sidebarCollapsed} />
           )}
-          {page === 5 && <BookThuChi />}
-          {page === 6 && <BookTonKho />}
+          {page === 5 && <BookThuChiPage activeTab={tab ?? 'receipts'} onTabChange={navigateToTab} />}
+          {page === 6 && <BookTonKhoPage activeTab={tab ?? 'receipts'} onTabChange={navigateToTab} />}
+          {page === 7 && <DanhMucPage activeTab={tab ?? 'customer'} onTabChange={navigateToTab} />}
+          {page === 8 && <ThietLapPage activeTab={tab ?? 'users'} onTabChange={navigateToTab} />}
+          {page === 9 && <BookKeToanPage activeTab={tab ?? 'vouchers'} onTabChange={navigateToTab} />}
         </div>
       </div>
     </div>

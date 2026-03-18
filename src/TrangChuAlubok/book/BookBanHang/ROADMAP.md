@@ -5,7 +5,7 @@
 
 ---
 
-## Trạng thái: ⬜ Chưa bắt đầu (chỉ có placeholder "3")
+## Trạng thái: ✅ Phase B1 hoàn chỉnh (26 tests, 2 suites)
 
 ## Ưu tiên: ⭐⭐ Cao
 
@@ -32,33 +32,50 @@ BookThietKeBocTach (BOM) → Quote (draft) → Approve → Sales Order → Deliv
 
 ---
 
-## Cấu trúc khi build
+## Cấu trúc hiện tại
 
 ```
 BookBanHang/
+├── ROADMAP.md
+├── docs_history_commit.md
 └── src/
-    ├── domain/
-    │   ├── quote/           ← Quote entity, QuoteService, trạng thái
-    │   └── salesOrder/      ← SalesOrder entity, SalesOrderService
+    ├── index.ts                      ← barrel export
+    ├── types/
+    │   ├── banHang.types.ts          ← Quote/SalesOrder types, status labels/colors, calc helpers
+    │   └── index.ts
+    ├── store/
+    │   └── banHangStore.ts           ← Zustand + persist, 3 quotes + 1 order seed
     ├── ui/
-    │   ├── QuoteList.tsx
-    │   ├── QuoteDetail.tsx
-    │   ├── QuoteForm.tsx
-    │   ├── SalesOrderList.tsx
-    │   └── SalesOrderDetail.tsx
-    ├── reports/
-    │   ├── QuoteReport.tsx
-    │   └── SalesReport.tsx
-    └── hooks/
+    │   ├── BookBanHangPage.tsx        ← Level-2 sidebar (4 tabs, internal list/form/detail nav)
+    │   ├── QuoteList.tsx             ← Quote table + search + status filter
+    │   ├── QuoteForm.tsx             ← Create/edit quote with line items
+    │   ├── QuoteDetail.tsx           ← View + approval workflow + convert to order
+    │   ├── SalesOrderList.tsx        ← Order table + search + status filter
+    │   ├── SalesOrderForm.tsx        ← Create/edit order with line items
+    │   ├── SalesOrderDetail.tsx      ← View + status transitions + tracking
+    │   ├── QuoteReport.tsx           ← Quote analytics (cards + bars)
+    │   └── SalesReport.tsx           ← Sales analytics (cards + bars + progress)
+    └── tests/
+        ├── banHangTypes.test.ts      ← 16 tests
+        └── banHangStore.test.ts      ← 10 tests
 ```
 
 ---
 
 ## Checklist
 
-- [ ] Quote CRUD (draft → sent → approved/rejected → closed/cancelled)
+- [x] Quote CRUD (draft → pending → approved/rejected → closed/cancelled)
 - [ ] Generate quote từ BOM data
 - [ ] PDF export cho báo giá
-- [ ] Sales order (convert quote → order)
-- [ ] Reports: báo cáo báo giá, báo cáo bán hàng
+- [x] Sales order (convert quote → order)
+- [x] Reports: báo cáo báo giá, báo cáo bán hàng
 - [ ] Permission: `quote:approve`, `sales.order:create`...
+
+---
+
+## 🔮 FUTURE PHASES
+
+- **B1.next**: Generate quote từ BOM data (tích hợp BookThietKeBocTach)
+- **B1.PDF**: PDF export cho báo giá (dùng print template từ ThietLap)
+- **B1.RBAC**: Tích hợp permission guards (quote:approve, sales.order:create...)
+- **B1.DeliveryTracking**: Tracking giao hàng chi tiết (từng item)

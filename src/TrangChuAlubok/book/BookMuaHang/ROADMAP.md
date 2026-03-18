@@ -5,7 +5,7 @@
 
 ---
 
-## Trạng thái: 🟡 Có code sẵn (MuaHangPage + 7 category components)
+## Trạng thái: ✅ Phase B2 hoàn chỉnh (13 source + 2 test files, 33 tests)
 
 ## Ưu tiên: ⭐ Trung bình
 
@@ -43,9 +43,38 @@ Yêu cầu mua (Purchase Request) → Duyệt → Đơn mua (Purchase Order) →
 
 ## Checklist
 
-- [ ] Purchase Request CRUD + approval workflow
-- [ ] Purchase Order CRUD + tracking
-- [ ] Tích hợp với shop MuaHangPage hiện tại
+- [x] Purchase Request CRUD + approval workflow
+- [x] Purchase Order CRUD + tracking
+- [x] Tích hợp với shop MuaHangPage hiện tại
 - [ ] Nhập kho tự động khi PO confirm
-- [ ] Reports: báo cáo mua hàng
+- [x] Reports: báo cáo mua hàng
 - [ ] Permission: `purchase.order:approve`, `purchase.request:create`...
+
+---
+
+## Cấu trúc thư mục
+
+```
+BookMuaHang/
+├── ROADMAP.md
+├── docs_history_commit.md
+└── src/
+    ├── index.ts
+    ├── types/
+    │   ├── muaHang.types.ts
+    │   └── index.ts
+    ├── store/
+    │   └── muaHangStore.ts
+    ├── ui/
+    │   ├── BookMuaHangPage.tsx
+    │   ├── PurchaseRequestList.tsx
+    │   ├── PurchaseRequestForm.tsx
+    │   ├── PurchaseRequestDetail.tsx
+    │   ├── PurchaseOrderList.tsx
+    │   ├── PurchaseOrderForm.tsx
+    │   ├── PurchaseOrderDetail.tsx
+    │   └── PurchaseReport.tsx
+    └── tests/
+        ├── muaHangTypes.test.ts
+        └── muaHangStore.test.ts
+```

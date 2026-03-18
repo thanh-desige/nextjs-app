@@ -1,8 +1,8 @@
 # 📁 CẤU TRÚC DỰ ÁN NEXTJS-APP (ALUBOK)
 
-> Cập nhật: **08/03/2026** — Scan trực tiếp từ cây thư mục thực tế
-> Tổng: **~462 files** (415 .ts/.tsx, 32 .md, còn lại config/assets)
-> Tests: **875/875 pass, 19 suites, ~7s**
+> Cập nhật: **11/03/2026** — Scan trực tiếp từ cây thư mục thực tế
+> Tổng: **~500 files** (455 .ts/.tsx, 35 .md, còn lại config/assets)
+> Tests: **1189/1189 pass, 38 suites**
 
 ---
 
@@ -40,8 +40,10 @@ nextjs-app/
 src/app/
 ├── globals.css                     # CSS toàn cục (Tailwind imports)
 ├── layout.tsx                      # Root layout (html + body wrapper)
-├── page.tsx                        # Trang chủ (/) — redirect/navigation
+├── page.tsx                        # Trang chủ (/) — landing page
 ├── favicon.ico                     # Icon trang web
+├── [...slug]/
+│   └── page.tsx                    # Catch-all route (/ban-hang/bao-gia, /danh-muc/khach-hang...)
 └── cad/
     └── page.tsx                    # Route /cad — trang CAD chính
 ```
@@ -108,8 +110,13 @@ src/PlatformAdmin/                  # ⚡ QuanTriAdmin — Platform Admin ALUBOK
 │   └── ReleaseControlPage.tsx      # E15: Release management, remote config
 └── config/
     └── PlatformConfigPage.tsx      # E16: Platform settings, maintenance mode
-    ├── App.tsx                     # Book app root component
-    ├── Sidebar.tsx                 # Thanh điều hướng trái (8 mục: 6 sổ + Kế toán + Thiết lập)
+    ├── App.tsx                     # Book app root component (useRouteSync URL routing)
+    ├── Sidebar.tsx                 # Global sidebar L1 (8 mục: 6 sổ + Danh mục + Thiết lập)
+    ├── navigation/                 # ⭐ URL routing + tab bar system
+    │   ├── routeConfig.ts          # Route mapping: page ↔ slug ↔ tab keys
+    │   ├── useRouteSync.ts         # URL sync hook (pushState + popstate)
+    │   ├── ModuleTabBar.tsx        # Horizontal contextual tab bar component
+    │   └── index.ts                # Barrel export
     ├── BOOK_STRUCTURE.md          # 📋 Tổng quan 10 module, trạng thái, cấu trúc
     ├── PROJECT_ROADMAP.md         # 🗺️ Thứ tự ưu tiên build (Đợt 1→4 + Song song)
     ├── MODULE_TAB_PAGE_MAP.md     # 🗂️ Bảng tổng hợp: 10 module → ~48 tabs → ~113 pages
@@ -124,33 +131,84 @@ src/PlatformAdmin/                  # ⚡ QuanTriAdmin — Platform Admin ALUBOK
     ├── BookTongQuan.tsx            # 📊 Sổ Tổng Quan / Dashboard (placeholder)
     ├── BookTonKho.tsx              # 📦 Sổ Tồn Kho (placeholder)
     │
-    ├── shared/                     # [INTERNAL] Types + RBAC guards dùng chung
+    ├── shared/                     # [INTERNAL] Types + RBAC guards dùng chung ✅ Phase F1
     │   ├── ROADMAP.md
-    │   └── docs_history_commit.md
+    │   ├── docs_history_commit.md
+    │   └── src/
+    │       ├── index.ts            # Main barrel export
+    │       ├── types/              # 8 files: permission, org, user, member, role, session, audit + index
+    │       ├── constants/          # permissionCatalog (67 resources), defaultRoles (12 roles)
+    │       ├── utils/              # permissionUtils (has, match, expand, validate)
+    │       ├── guards/             # requirePermission, requireModuleAccess, checkBusinessPolicy
+    │       ├── hooks/              # usePermission, useCurrentUser, useCurrentOrg
+    │       └── tests/             # 85 tests, 3 suites
     ├── DanhMuc/                    # [INTERNAL] Nhóm A — Master Data (12 resources)
     │   ├── ROADMAP.md
-    │   └── docs_history_commit.md
+    │   ├── docs_history_commit.md
+    │   └── src/
+    │       ├── index.ts            # barrel export
+    │       ├── types/              # 8 files: base, customer, supplier, employee, material, catalog, doorTemplate
+    │       ├── services/           # crudService.ts (generic in-memory CRUD)
+    │       ├── store/              # danhMucStore.ts (Zustand + persist, 12 arrays)
+    │       ├── ui/                 # DataTable, EntityForm, StatusBadge, CategoryPage, DanhMucPage, categoryConfigs
+    │       └── tests/             # 37 tests, 3 suites
     ├── BookTongQuan/               # [SIDEBAR] Dashboard tổng hợp
     │   ├── ROADMAP.md
     │   └── docs_history_commit.md
-    ├── BookBanHang/                # [SIDEBAR] Báo giá + Đơn bán hàng
+    ├── BookBanHang/                # [SIDEBAR] Báo giá + Đơn bán hàng ✅ Phase B1
     │   ├── ROADMAP.md
-    │   └── docs_history_commit.md
-    ├── BookMuaHang/                # [SIDEBAR] Đơn mua hàng + Yêu cầu mua
+    │   ├── docs_history_commit.md
+    │   └── src/
+    │       ├── index.ts
+    │       ├── types/             # banHang.types.ts (Quote, SalesOrder, calc helpers)
+    │       ├── store/             # banHangStore.ts (Zustand + persist)
+    │       ├── ui/                # 9 components (Page, List, Form, Detail, Reports)
+    │       └── tests/             # 26 tests, 2 suites
+    ├── BookMuaHang/                # [SIDEBAR] Đơn mua hàng + Yêu cầu mua ✅ Phase B2
     │   ├── ROADMAP.md
-    │   └── docs_history_commit.md
-    ├── BookTonKho/                 # [SIDEBAR] Nhập/xuất/chuyển kho, kiểm kê
+    │   ├── docs_history_commit.md
+    │   └── src/
+    │       ├── index.ts            # barrel export
+    │       ├── types/              # muaHang.types.ts (PR/PO types, status labels, calc helpers)
+    │       ├── store/              # muaHangStore.ts (Zustand + persist, 3 requests + 1 order seed)
+    │       ├── ui/                 # 8 components (Page, List, Form, Detail × 2, Report)
+    │       └── tests/             # 33 tests, 2 suites
+    ├── BookTonKho/                 # [SIDEBAR] Nhập/xuất/chuyển kho, kiểm kê ✅ Phase B3
     │   ├── ROADMAP.md
-    │   └── docs_history_commit.md
-    ├── BookThuChi/                 # [SIDEBAR] Phiếu thu/chi, công nợ
+    │   ├── docs_history_commit.md
+    │   └── src/
+    │       ├── index.ts            # barrel export
+    │       ├── types/              # tonKho.types.ts (Receipt/Issue/Transfer, status, calc helpers)
+    │       ├── store/              # tonKhoStore.ts (Zustand + persist, 3 receipts + 2 issues + 1 transfer seed)
+    │       ├── ui/                 # 11 components (Page, List×3, Form×3, Detail×3, Balance, Report)
+    │       └── tests/             # 29 tests, 2 suites
+    ├── BookThuChi/                 # [SIDEBAR] Phiếu thu/chi, công nợ ✅ Phase B4
     │   ├── ROADMAP.md
-    │   └── docs_history_commit.md
-    ├── BookKeToan/                 # [SIDEBAR] Chứng từ kế toán, hóa đơn
+    │   ├── docs_history_commit.md
+    │   └── src/
+    │       ├── index.ts            # barrel export
+    │       ├── types/              # thuChi.types.ts (Receipt/Payment/AR/AP, status, calc helpers)
+    │       ├── store/              # thuChiStore.ts (Zustand + persist, 3 receipts + 2 payments + 3 AR + 2 AP seed)
+    │       ├── ui/                 # 14 components (Page, List×2, Form×2, Detail×2, AR, AP, DebtReport, CashFlowReport)
+    │       └── tests/             # 34 tests, 2 suites
+    ├── BookKeToan/                 # [SIDEBAR] Chứng từ kế toán, hóa đơn ✅ Phase C2
     │   ├── ROADMAP.md
-    │   └── docs_history_commit.md
-    ├── ThietLap/                   # [SETTINGS] Quản trị user, role, permission
+    │   ├── docs_history_commit.md
+    │   └── src/
+    │       ├── index.ts            # barrel export
+    │       ├── types/              # keToan.types.ts (Voucher/Invoice, status, entry, helpers)
+    │       ├── store/              # keToanStore.ts (Zustand + persist, 4 vouchers + 3 invoices seed)
+    │       ├── ui/                 # 9 components (Page, VoucherList/Form/Detail, InvoiceList/Form/Detail, LedgerPage, Report)
+    │       └── tests/             # 31 tests, 2 suites
+    ├── ThietLap/                   # [SETTINGS] Quản trị user, role, permission ✅ Phase F3
     │   ├── ROADMAP.md
-    │   └── docs_history_commit.md
+    │   ├── docs_history_commit.md
+    │   └── src/
+    │       ├── index.ts            # barrel export
+    │       ├── types/              # setting.types.ts (ManagedUser, ManagedRole, labels, SystemSettings)
+    │       ├── store/              # thietLapStore.ts (Zustand + persist, seed data)
+    │       ├── ui/                 # ThietLapPage, UserManagement, RoleManagement, PermissionMatrix, OrgSettings, SystemSettings, AuditLog, PlaceholderPage
+    │       └── tests/             # 36 tests, 3 suites
     │
     └── BookThietKeBocTach/         # ===== MODULE CAD CHÍNH =====
         ├── ARCHITECTURE.md         # Kiến trúc CAD module (cập nhật mỗi task)
@@ -800,12 +858,12 @@ src/TrangChuAlubok/book/BookThietKeBocTach/src/
 
 | Metric | Giá trị |
 |--------|---------|
-| Tổng files | ~462 |
-| Files .ts/.tsx | ~415 |
-| Files .md | 32 |
-| Tests | **875/875 pass** |
-| Test suites | **19** |
-| Test time | **~7s** |
+| Tổng files | ~500 |
+| Files .ts/.tsx | ~455 |
+| Files .md | 33 |
+| Tests | **1124/1124 pass** |
+| Test suites | **34** |
+| Test time | **~8s** |
 | Module folders (book/) | 10 (shared, DanhMuc, BookTongQuan, BookThietKeBocTach, BookBanHang, BookMuaHang, BookTonKho, BookThuChi, BookKeToan, ThietLap) |
 | Thư mục cấp 1 (trong BookThietKeBocTach/src/) | 15 (core, domain, door-engines, systems, adapters, analysis, hooks, store, ui, docs, tests, types, assets, __tests__) |
 | Entity types | 8 (line, rect, circle, arc, ellipse, polyline, text, dimension) |

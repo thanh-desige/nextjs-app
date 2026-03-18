@@ -5,7 +5,7 @@
 
 ---
 
-## Trạng thái: ⬜ Chưa bắt đầu
+## Trạng thái: ✅ Phase F1 hoàn tất (85 tests, 3 suites)
 
 ## Ưu tiên: ⭐⭐⭐ Rất cao (build đầu tiên)
 
@@ -41,12 +41,14 @@ member_role    → { memberId, roleId }
 
 ## Checklist
 
-- [ ] TypeScript interfaces cho 7 bảng DB
-- [ ] Permission catalog typed constant (43 resources × actions)
-- [ ] Default roles seed data (6 roles: OWNER, ADMIN, DESIGNER, ACCOUNTANT, WAREHOUSE, SALES)
-- [ ] `hasPermission(userPerms, "quote:approve")` utility
-- [ ] `usePermission("quote:approve")` hook
-- [ ] Tests cho permission matching (wildcard `*`, exact match)
+- [x] TypeScript interfaces cho 15+ bảng DB (7 type files, 55+ interfaces/types)
+- [x] Permission catalog typed constant (67 resources × 17 actions, 5 groups A-E)
+- [x] Default roles seed data (6 app roles + 6 internal admin roles)
+- [x] `hasPermission(userPerms, "quote:approve")` utility + `matchPermission()` wildcard
+- [x] `usePermission("quote:approve")` hook + `useCurrentUser()` + `useCurrentOrg()`
+- [x] Guards: `requirePermission()`, `requireOrgMember()`, `requireModuleAccess()`
+- [x] Business policy: `checkBusinessPolicy()`, `checkApprovalLimit()`, `getDataScopeFilter()`
+- [x] Tests: 85 tests, 3 suites (permissionUtils, guards, catalog integrity)
 
 ---
 
@@ -76,28 +78,45 @@ member_role    → { memberId, roleId }
 ```
 shared/
 └── src/
+    ├── index.ts                  ← Main barrel export
     ├── types/
-    │   ├── org.types.ts          ← Org, OrgMember interfaces
-    │   ├── user.types.ts         ← User interface
-    │   ├── role.types.ts         ← Role, SystemRole enum (6 giá trị)
-    │   └── permission.types.ts   ← Permission, PermissionAction, PermissionResource
+    │   ├── index.ts              ← Types barrel
+    │   ├── permission.types.ts   ← 67 PermissionResource, 17 PermissionAction, PermissionString
+    │   ├── org.types.ts          ← Org, OrgBranch, PlatformPolicy
+    │   ├── user.types.ts         ← User
+    │   ├── member.types.ts       ← OrgMember, UserEntitlement, MemberRole
+    │   ├── role.types.ts         ← AppRole, SystemRoleName, PlatformAdminRole
+    │   ├── session.types.ts      ← SessionContext, ModuleKey, DataScopeEntry
+    │   └── audit.types.ts        ← AuditLog, SecurityLog, ApprovalConfig, ApprovalDelegation
     ├── constants/
-    │   ├── permissionCatalog.ts  ← Typed const từ PERMISSION_CATALOG.md (43 resources)
-    │   └── defaultRoles.ts      ← 6 default roles + permission sets
+    │   ├── index.ts
+    │   ├── permissionCatalog.ts  ← 67 resources × actions (5 groups A-E)
+    │   └── defaultRoles.ts      ← 6 app roles + 6 internal admin roles
     ├── utils/
-    │   └── permissionUtils.ts   ← hasPermission(), parsePermission(), matchWildcard()
+    │   ├── index.ts
+    │   └── permissionUtils.ts   ← hasPermission, matchPermission, expandRole, validate
     ├── guards/
-    │   └── requirePermission.ts ← requirePermission(), requireOrgMember()
-    └── hooks/
-        ├── usePermission.ts     ← usePermission("quote:approve") → boolean
-        └── useCurrentUser.ts    ← useCurrentUser() → { user, orgMember, roles, permissions }
+    │   ├── index.ts
+    │   └── requirePermission.ts ← requirePermission, requireModuleAccess, checkBusinessPolicy
+    ├── hooks/
+    │   ├── index.ts
+    │   ├── usePermission.ts     ← usePermission("quote", "approve") → boolean
+    │   └── useCurrentUser.ts    ← useSessionContext, useCurrentUser, useCurrentOrg
+    └── tests/
+        ├── permissionUtils.test.ts  ← 50 tests
+        ├── guards.test.ts           ← 18 tests
+        └── catalog.test.ts          ← 17 tests
 ```
 
 **Checklist**:
-- [ ] F1.1: `role.types.ts` — `SystemRole` enum: OWNER, ADMIN, DESIGNER, ACCOUNTANT, WAREHOUSE, SALES
-- [ ] F1.2: `permission.types.ts` — `Permission` = `{ resource: string, action: string }`; format `"resource:action"`
-- [ ] F1.3: `permissionCatalog.ts` — typed const cho 43 resources (A1-A12, B1-B20, C1-C11, D1-D11)
-- [ ] F1.4: `defaultRoles.ts` — 6 default roles với permission sets
+- [x] F1.1: 7 type files — permission, org, user, member, role, session, audit (55+ interfaces/types)
+- [x] F1.2: `permissionCatalog.ts` — typed const cho 67 resources (A1-A12, B1-B20, C1-C11, D1-D8, E1-E16)
+- [x] F1.3: `defaultRoles.ts` — 6 app roles + 6 internal admin roles với permission sets
+- [x] F1.4: `permissionUtils.ts` — parse, match, has, expand, validate
+- [x] F1.5: `requirePermission.ts` — guards + business policy checks
+- [x] F1.6: `usePermission.ts` + `useCurrentUser.ts` — React hooks
+- [x] F1.7: `index.ts` barrel exports (types, constants, utils, guards, hooks)
+- [x] F1.8: 85 tests, 3 suites — all pass
 - [ ] F1.5: `permissionUtils.ts` — `hasPermission(userPerms, "quote:approve")`, `matchWildcard("design.project:*")`
 - [ ] F1.6: Tests cho permissionUtils (exact match, wildcard, multi-permission)
 

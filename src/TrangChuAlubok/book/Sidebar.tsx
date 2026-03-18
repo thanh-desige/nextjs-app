@@ -134,6 +134,87 @@ const IconTonKho = () => (
   </svg>
 );
 
+const IconDanhMuc = () => (
+  <svg
+    width="40"
+    height="38"
+    viewBox="0 0 40 38"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M0 4C0 1.79086 1.79086 0 4 0H40V38H4C1.79086 38 0 36.2091 0 34V4Z"
+      fill="#386D30"
+    />
+    <path
+      d="M10 10H22M10 16H30M10 22H26M10 28H18"
+      stroke="black"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <circle cx="28" cy="10" r="2" fill="black" />
+  </svg>
+);
+
+const IconThietLap = () => (
+  <svg
+    width="40"
+    height="38"
+    viewBox="0 0 40 38"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M0 4C0 1.79086 1.79086 0 4 0H40V38H4C1.79086 38 0 36.2091 0 34V4Z"
+      fill="#386D30"
+    />
+    <path
+      d="M20 24C22.7614 24 25 21.7614 25 19C25 16.2386 22.7614 14 20 14C17.2386 14 15 16.2386 15 19C15 21.7614 17.2386 24 20 24Z"
+      stroke="black"
+      strokeWidth="2"
+    />
+    <path
+      d="M20 8V10M20 28V30M12 19H10M30 19H28M13.5 11.5L15 13M25 25L26.5 26.5M26.5 11.5L25 13M15 25L13.5 26.5"
+      stroke="black"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const IconKeToan = () => (
+  <svg
+    width="40"
+    height="38"
+    viewBox="0 0 40 38"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M0 4C0 1.79086 1.79086 0 4 0H40V38H4C1.79086 38 0 36.2091 0 34V4Z"
+      fill="#386D30"
+    />
+    <path
+      d="M10 8H30V30H10V8Z"
+      stroke="black"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M14 14H26M14 19H26M14 24H22"
+      stroke="black"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <path
+      d="M10 8L13 6H33V28L30 30"
+      stroke="black"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 interface MenuItem {
   id: number;
   name: string;
@@ -147,6 +228,9 @@ const MENU: MenuItem[] = [
   { id: 4, name: "Thiết kế & bóc tách", icon: <IconThietKeBocTach /> },
   { id: 5, name: "Thu - chi", icon: <IconThuChi /> },
   { id: 6, name: "Tồn kho", icon: <IconTonKho /> },
+  { id: 7, name: "Danh mục", icon: <IconDanhMuc /> },
+  { id: 8, name: "Thiết lập", icon: <IconThietLap /> },
+  { id: 9, name: "Kế toán", icon: <IconKeToan /> },
 ];
 
 interface ArrowProps {

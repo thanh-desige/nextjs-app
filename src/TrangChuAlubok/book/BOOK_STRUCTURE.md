@@ -41,15 +41,18 @@ book/
 
 ## Chi tiết từng module
 
-### 1. shared/ — Code dùng chung
+### 1. shared/ — Code dùng chung ✅ Phase F1
 
 | Vai trò | Nội dung |
 |---------|----------|
-| Không hiển thị UI | Types: org, user, permission, role |
-| | Guards: `requirePermission()`, `requireOrgMember()` |
-| | Hooks: `usePermission()`, `useCurrentOrg()` |
+| Không hiển thị UI | Types: 7 files (permission, org, user, member, role, session, audit) |
+| | Constants: `PERMISSION_CATALOG` (67 resources), `DEFAULT_APP_ROLES` (6), `DEFAULT_INTERNAL_ROLES` (6) |
+| | Utils: `hasPermission()`, `matchPermission()`, `expandRole()`, `isValidPermission()` |
+| | Guards: `requirePermission()`, `requireOrgMember()`, `requireModuleAccess()`, `checkBusinessPolicy()` |
+| | Hooks: `usePermission()`, `useCurrentUser()`, `useCurrentOrg()`, `useModuleAccess()` |
+| | Tests: 85 tests, 3 suites |
 
-### 2. DanhMuc/ — Nhóm A: Danh muc (Master Data)
+### 2. DanhMuc/ — Nhóm A: Danh muc (Master Data) ✅ Phase F2
 
 | Catalog | Resources |
 |---------|-----------|
@@ -130,11 +133,11 @@ book/
 
 > Chứng từ kế toán, hóa đơn. Reports: C10 (`report.accounting`).
 
-### 10. ThietLap/ — Thiết lập hệ thống (**cấp Tenant**)
+### 10. ThietLap/ — Thiết lập hệ thống (**cấp Tenant**) ✅ Phase F3
 
 | Catalog | Resources | Sidebar |
 |---------|-----------|---------|
-| D1 | `setting.user` | ⚠️ Chưa có trên sidebar |
+| D1 | `setting.user` | ✅ "Thiết lập" (page 8) |
 | D2 | `setting.role` | |
 | D3 | `setting.permission` | |
 | D4 | `setting.org` | |
@@ -144,7 +147,8 @@ book/
 | D8 | `setting.audit_log` | |
 
 > Quản lý user, vai trò quyền hạn, tổ chức, cấu hình hệ thống **của tenant khách hàng**.
-> Có thể hiển thị bằng icon Settings riêng (kiểu MISA).
+> IconThietLap (gear) trên Sidebar, page === 8.
+> 15 source files, 3 test files (36 tests), Zustand + persist store.
 >
 > **⚠️ RANH GIỚI QUAN TRỌNG**: ThietLap chỉ gồm D1–D8 (8 tab).
 > Backup (cũ D9), Integration (cũ D10), Subscription (cũ D11) đã chuyển sang **QuanTriAdmin** (Nhóm E).
@@ -203,16 +207,50 @@ Reports (nhóm C) **không tách module riêng**, mà nằm trong module tương
 
 | Module | Folder | Có src/? | Có code? |
 |--------|--------|----------|----------|
-| shared | ✅ | ❌ | ❌ |
-| DanhMuc | ✅ | ❌ | ❌ |
+| shared | ✅ | ✅ | ✅ (20 files, 85 tests) |
+| DanhMuc | ✅ | ✅ | ✅ (19 files, 37 tests) |
 | BookTongQuan | ✅ | ❌ | ❌ |
 | BookThietKeBocTach | ✅ | ✅ | ✅ (~50+ files) |
-| BookBanHang | ✅ | ❌ | ❌ |
+| BookBanHang | ✅ | ✅ | ✅ (15 files, 26 tests) |
 | BookMuaHang | ✅ | ❌ | ❌ |
 | BookTonKho | ✅ | ❌ | ❌ |
 | BookThuChi | ✅ | ❌ | ❌ |
 | BookKeToan | ✅ | ❌ | ❌ |
-| ThietLap | ✅ | ❌ | ❌ |
+| ThietLap | ✅ | ✅ | ✅ (15 files, 36 tests) |
+
+---
+
+## Navigation Architecture
+
+**Pattern**: Persistent global sidebar (L1) + Contextual horizontal tabs (L2) + URL routing
+
+```
+┌─────────┬──────────────────────────────────────────────┐
+│ SIDEBAR │  [Tab 1] [Tab 2] [Tab 3] ... ← ModuleTabBar │
+│  (L1)   ├──────────────────────────────────────────────┤
+│         │                                              │
+│ Tổng    │  Content area                                │
+│ quan    │                                              │
+│ Mua     │                                              │
+│ hàng    │                                              │
+│ Bán     │                                              │
+│ hàng    │                                              │
+│ ...     │                                              │
+└─────────┴──────────────────────────────────────────────┘
+```
+
+**URL Routing**: `window.history.pushState` + catch-all `[...slug]/page.tsx`
+
+| URL | Module | Tab |
+|-----|--------|-----|
+| `/` | Landing | — |
+| `/tong-quan` | BookTongQuan | — |
+| `/ban-hang/bao-gia` | BookBanHang | Báo giá |
+| `/ban-hang/don-ban-hang` | BookBanHang | Đơn bán hàng |
+| `/danh-muc/khach-hang` | DanhMuc | Khách hàng |
+| `/thiet-lap/nguoi-dung` | ThietLap | Người dùng |
+
+**Source**: `book/navigation/` (routeConfig.ts, useRouteSync.ts, ModuleTabBar.tsx)
 
 ---
 
@@ -223,3 +261,5 @@ Reports (nhóm C) **không tách module riêng**, mà nằm trong module tương
 3. Reports nằm trong module tương ứng, không tách riêng
 4. `shared/` là foundation — build trước khi code các Book khác
 5. Tất cả phân quyền phải tham chiếu `PERMISSION_CATALOG.md`
+6. **Navigation**: Dùng horizontal tab bar (ModuleTabBar) — KHÔNG dùng sidebar cấp 2
+7. **URL routing**: Mỗi tab phải có URL riêng, cấu hình trong `navigation/routeConfig.ts`

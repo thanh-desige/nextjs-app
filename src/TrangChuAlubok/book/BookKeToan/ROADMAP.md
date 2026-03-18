@@ -5,7 +5,7 @@
 
 ---
 
-## Trạng thái: ⬜ Chưa bắt đầu (chưa có trên sidebar)
+## Trạng thái: ✅ Phase C2 hoàn chỉnh — 31 tests, 2 suites
 
 ## Ưu tiên: Thấp
 
@@ -15,11 +15,11 @@
 
 ## Phạm vi
 
-| Catalog | Resource | Mô tả |
-|---------|----------|-------|
-| B19 | `accounting.voucher` | Chứng từ kế toán (bút toán) |
-| B20 | `accounting.invoice` | Hóa đơn (VAT, bán hàng...) |
-| C10 | `report.accounting` | Báo cáo kế toán |
+| Catalog | Resource | Mô tả | Trạng thái |
+|---------|----------|-------|----------|
+| B19 | `accounting.voucher` | Chứng từ kế toán (bút toán) | ✅ |
+| B20 | `accounting.invoice` | Hóa đơn (VAT, bán hàng...) | ✅ |
+| C10 | `report.accounting` | Báo cáo kế toán | ✅ |
 
 ---
 
@@ -35,11 +35,11 @@ Cuối kỳ: đối chiếu, khóa sổ
 
 ## Checklist
 
-- [ ] Chứng từ kế toán CRUD + approve/reject/close
-- [ ] Hóa đơn CRUD + approve/cancel
-- [ ] Tự động sinh voucher từ phiếu thu/chi
-- [ ] Sổ cái, sổ nhật ký
-- [ ] Khóa sổ cuối kỳ
-- [ ] Reports: báo cáo kế toán
-- [ ] ⚠️ Thêm "Kế toán" vào Sidebar
-- [ ] Permission: `accounting.voucher:approve`, `accounting.invoice:create`...
+- [x] Chứng từ kế toán CRUD + approve/reject/close
+- [x] Hóa đơn CRUD + approve/cancel
+- [ ] Tự động sinh voucher từ phiếu thu/chi (deferred to integration phase)
+- [x] Sổ cái, sổ nhật ký
+- [x] Khóa sổ cuối kỳ (close status on approved vouchers)
+- [x] Reports: báo cáo kế toán
+- [x] ✅ Thêm "Kế toán" vào Sidebar (page 9, icon + menu item)
+- [ ] Permission: `accounting.voucher:approve`, `accounting.invoice:create`... (deferred)
