@@ -64,7 +64,7 @@ export default function Header1({
   const tabs: { id: TabType; label: string }[] = [
     { id: "thietke", label: "Thiết kế" },
     { id: "filebom", label: "Bóc tách (BOM)" },
-    { id: "filebaogia", label: "Báo giá" },
+    { id: "filebaogia", label: "Danh sách cắt" },
   ];
 
   return (

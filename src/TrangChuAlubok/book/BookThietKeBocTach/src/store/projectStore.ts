@@ -4,6 +4,8 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useDoorStore } from "./doorStore";
+import type { DoorInfo } from "../core/entities/DoorEntity";
 
 // ==================== Types ====================
 
@@ -35,6 +37,12 @@ export interface ProjectInfo {
   created: string;
   modified: string;
   status: "draft" | "active" | "completed" | "archived";
+  /** Trạng thái chức năng (hiển thị trên bảng dự án) */
+  projectStatus?: "designing" | "quoted" | "done" | "locked";
+  /** Mã dự án tự sinh (DA 1, DA 2...) */
+  projectCode?: string;
+  /** Nhân viên phụ trách */
+  employee?: string;
   thumbnail?: string;
   tags?: string[];
   notes?: string; // Ghi chú thêm
@@ -47,6 +55,8 @@ export interface BomItem {
   name: string;
   unit: string;
   quantity: number;
+  length?: number;     // mm — piece length for cut optimization (aluminum/glass)
+  height?: number;     // mm — piece height (glass only)
   unitPrice: number;
   totalPrice: number;
   notes?: string;
@@ -126,6 +136,7 @@ export interface ProjectStoreActions {
 
   // BOM management
   calculateBom: () => void;
+  calculateArea: () => void;
   addBomItem: (item: Omit<BomItem, "id" | "totalPrice">) => void;
   updateBomItem: (id: string, updates: Partial<BomItem>) => void;
   removeBomItem: (id: string) => void;
@@ -185,9 +196,16 @@ export const useProjectStore = create<ProjectStore>()(
       // Project management
       createProject: (info) => {
         const now = new Date().toISOString();
+        // Auto-generate project code: DA 1, DA 2, ...
+        const maxCode = get().recentProjects.reduce((max, p) => {
+          const m = p.projectCode?.match(/^DA\s+(\d+)$/);
+          return m ? Math.max(max, Number(m[1])) : max;
+        }, 0);
         const project: ProjectInfo = {
           ...info,
           id: generateId(),
+          projectCode: info.projectCode ?? `DA ${maxCode + 1}`,
+          projectStatus: info.projectStatus ?? 'designing',
           created: now,
           modified: now,
           status: info.status ?? "draft",
@@ -207,7 +225,11 @@ export const useProjectStore = create<ProjectStore>()(
             ...updates,
             modified: new Date().toISOString(),
           };
-          return { currentProject: updated };
+          // Sync recentProjects as well
+          const recentProjects = state.recentProjects.map((p) =>
+            p.id === updated.id ? updated : p
+          );
+          return { currentProject: updated, recentProjects };
         }),
 
       loadProject: async (id) => {
@@ -265,12 +287,109 @@ export const useProjectStore = create<ProjectStore>()(
       calculateBom: () => {
         set({ isCalculating: true });
         try {
-          // In real app, calculate from CAD entities and door models
-          // This is a placeholder that would integrate with domain/bom
-          set({ bomLastCalculated: new Date().toISOString() });
+          // Read doors from doorStore
+          const doors = useDoorStore.getState().getAllDoors();
+          if (doors.length === 0) {
+            set({ bomItems: [], bomLastCalculated: new Date().toISOString() });
+            get().calculateQuote();
+            return;
+          }
+
+          const pricePerMm = 45; // VND/mm placeholder
+          const items: BomItem[] = [];
+          for (const door of doors) {
+            const info: DoorInfo = door.doorInfo;
+            const w = info.width;   // mm
+            const h = info.height;  // mm
+
+            // Horizontal bars (top + bottom)
+            items.push({
+              id: generateId(),
+              category: 'aluminum',
+              code: `FRAME-H-${info.systemId}`,
+              name: `Thanh ngang ${info.displayName}`,
+              unit: 'thanh',
+              quantity: 2,
+              length: w,
+              unitPrice: w * pricePerMm,
+              totalPrice: 2 * w * pricePerMm,
+              notes: `${w}mm — ngang (trên + dưới)`,
+              entityIds: [door.id],
+            });
+
+            // Vertical bars (left + right)
+            items.push({
+              id: generateId(),
+              category: 'aluminum',
+              code: `FRAME-V-${info.systemId}`,
+              name: `Thanh dọc ${info.displayName}`,
+              unit: 'thanh',
+              quantity: 2,
+              length: h,
+              unitPrice: h * pricePerMm,
+              totalPrice: 2 * h * pricePerMm,
+              notes: `${h}mm — dọc (trái + phải)`,
+              entityIds: [door.id],
+            });
+
+            // Glass panel(s)
+            const glassW = w - 100; // deduction for frame
+            const glassH = h - 100;
+            const glassArea = (glassW * glassH) / 1_000_000; // m²
+            const panelCount = info.variant.includes('sliding-4p') ? 4
+              : info.variant.includes('sliding-2p') || info.variant.includes('double') ? 2
+              : 1;
+            items.push({
+              id: generateId(),
+              category: 'glass',
+              code: `GLASS-${info.systemId}`,
+              name: `Kính ${info.displayName}`,
+              unit: 'm²',
+              quantity: panelCount,
+              length: glassW,
+              height: glassH,
+              unitPrice: Math.round(glassArea * 350_000),
+              totalPrice: Math.round(glassArea * panelCount * 350_000),
+              notes: `${panelCount} tấm — ${glassW}×${glassH}mm`,
+              entityIds: [door.id],
+            });
+
+            // Accessories (hinges, handles, locks)
+            const accessoryCount = info.variant.includes('sliding') ? 2 : (panelCount * 3 + 2);
+            items.push({
+              id: generateId(),
+              category: 'accessory',
+              code: `ACC-${info.variant}`,
+              name: `Phụ kiện ${info.displayName}`,
+              unit: 'bộ',
+              quantity: accessoryCount,
+              unitPrice: 120_000,
+              totalPrice: accessoryCount * 120_000,
+              notes: `Bản lề, tay nắm, khóa — ${info.variant}`,
+              entityIds: [door.id],
+            });
+          }
+
+          set({ bomItems: items, bomLastCalculated: new Date().toISOString() });
           get().calculateQuote();
+
+          // Also update area
+          get().calculateArea();
         } finally {
           set({ isCalculating: false });
+        }
+      },
+
+      calculateArea: () => {
+        // Calculate total door area from placed doors
+        const doors = useDoorStore.getState().getAllDoors();
+        let totalArea = 0;
+        for (const door of doors) {
+          totalArea += (door.doorInfo.width * door.doorInfo.height) / 1_000_000; // mm² → m²
+        }
+        const rounded = Math.round(totalArea * 100) / 100;
+        if (get().currentProject) {
+          get().updateProject({ area: rounded });
         }
       },
 

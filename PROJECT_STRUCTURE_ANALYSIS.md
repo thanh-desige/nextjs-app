@@ -2,7 +2,7 @@
 
 > Cập nhật: **19/03/2026** — Scan trực tiếp từ cây thư mục thực tế
 > Tổng: **~530 files** (485 .ts/.tsx, 35 .md, còn lại config/assets)
-> Tests: **1273/1273 pass, 41 suites**
+> Tests: **1336/1336 pass, 43 suites**
 
 ---
 
@@ -126,7 +126,8 @@ src/PlatformAdmin/                  # ⚡ QuanTriAdmin — Platform Admin ALUBOK
     │
     ├── BookBanHang.tsx             # 💰 Sổ Bán Hàng (placeholder)
     ├── BookMuaHang.tsx             # 🛒 Sổ Mua Hàng (placeholder)
-    ├── BookThietKeBocTach.tsx      # 📐 Sổ Thiết Kế Bóc Tách — wrapper cho CAD module
+    ├── BookThietKeBocTach.tsx      # 📐 Sổ Thiết Kế Bóc Tách — wrapper cho CAD module (legacy)
+    ├── BookThietKeBocTachModule.tsx # 📐 Module wrapper mới: 3 tab (Dự án/BOM/Danh sách cắt) + Canvas sub-route
     ├── BookThuChi.tsx              # 💵 Sổ Thu Chi (placeholder)
     ├── BookTongQuan.tsx            # 📊 Sổ Tổng Quan / Dashboard (placeholder)
     ├── BookTonKho.tsx              # 📦 Sổ Tồn Kho (placeholder)
@@ -858,6 +859,11 @@ src/TrangChuAlubok/book/BookThietKeBocTach/src/
 │
 ├── assets/door-templates/cua-so/    # Door template assets
 │   └── cua-so-hat.svg              # SVG template cửa sổ hất
+│
+├── ui/views/                        # Tab views (mới — tab restructuring)
+│   ├── ProjectListView.tsx          # Tab Dự án — project cards, CRUD, filter
+│   ├── BomView.tsx                  # Tab BOM — wrap BomPanel, nút tạo báo giá
+│   └── CutListView.tsx             # Tab Danh sách cắt — tối ưu cắt nhôm/kính
 │
 ├── types/
 │   └── DoorPreviewData.ts          # DoorPreviewData type

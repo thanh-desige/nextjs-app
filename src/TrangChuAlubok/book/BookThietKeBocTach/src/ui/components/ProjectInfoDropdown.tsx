@@ -164,14 +164,18 @@ export default function ProjectInfoDropdown({
             placeholder="Nhà ở, văn phòng, showroom..."
           />
 
-          {/* Diện tích */}
-          <FormField
-            label="Diện tích (m²)"
-            value={localInfo.area?.toString() || ""}
-            onChange={(v) => handleFieldChange("area", parseFloat(v) || 0)}
-            placeholder="0"
-            type="number"
-          />
+          {/* Diện tích — read-only, auto-calculated from CAD entities */}
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ color: '#888', fontSize: 11, display: 'block', marginBottom: 4 }}>
+              Diện tích (m²) — tự động tính từ bản vẽ
+            </label>
+            <div style={{
+              width: '100%', backgroundColor: '#1a1a2e', border: '1px solid #333',
+              borderRadius: 4, padding: '6px 10px', color: '#888', fontSize: 12,
+            }}>
+              {localInfo.area ? `${localInfo.area} m²` : 'Chưa có dữ liệu'}
+            </div>
+          </div>
 
           <Divider label="Chủ đầu tư" />
 

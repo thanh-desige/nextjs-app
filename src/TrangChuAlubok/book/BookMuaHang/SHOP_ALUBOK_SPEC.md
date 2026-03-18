@@ -200,7 +200,77 @@ Trang chủ → "Mua hàng" → Fullscreen shop (giá lẻ, VAT đã gồm)
 
 ---
 
-## 8. Checklist implement
+## 8. Quản trị Shop ALUBOK
+
+### 8.1 Phân tầng quản trị
+
+#### Platform Admin — Đội ALUBOK (`/admin`)
+
+Quản lý **toàn bộ vận hành shop**:
+
+| Nhóm | Chức năng | Resource |
+|------|-----------|----------|
+| **Sản phẩm** | CRUD sản phẩm, hình ảnh, thông số kỹ thuật, phân loại, trạng thái (đang bán / hết hàng / ngừng KD) | `platform.shop_product` |
+| **Bảng giá lẻ** | Giá retail áp chung cho B2C | `platform.shop_pricing` |
+| **Bảng giá sỉ** | Giá wholesale — cấu hình theo từng tenant/tier (không để tenant tự set) | `platform.shop_pricing` |
+| **Thuế suất VAT** | Gắn mức VAT cho từng sản phẩm/nhóm hàng | `platform.shop_pricing` |
+| **Chiết khấu** | Chiết khấu số lượng, combo, voucher | `platform.shop_promotion` |
+| **Khuyến mãi** | Giảm giá theo thời gian, chương trình KM | `platform.shop_promotion` |
+| **Đơn hàng B2C** | Xử lý: Mới → Xác nhận → Xuất kho → Giao hàng → Hoàn thành/Hủy/Hoàn trả | `platform.shop_order` |
+| **Đơn hàng B2B** | Đơn từ tenant qua Shop ALUBOK (cũng về Admin xử lý) | `platform.shop_order` |
+| **Khách hàng B2C** | Tài khoản khách lẻ, lịch sử mua, phân nhóm (mới/VIP/đại lý nhỏ) | `platform.shop_customer` |
+| **Thanh toán** | Phương thức (chuyển khoản, COD, MoMo, ZaloPay, VNPay), đối soát, hoàn tiền | `platform.shop_payment` |
+| **Hóa đơn VAT** | Xuất hóa đơn điện tử qua provider (VNPT/Viettel/MISA) | `platform.shop_invoice` |
+| **Vận chuyển** | Đối tác giao hàng, phí ship, tracking | `platform.shop_shipping` |
+| **Giao diện** | Banner, slider, sản phẩm nổi bật, SEO | `platform.shop_content` |
+| **Báo cáo** | Doanh thu B2B/B2C, sản phẩm bán chạy, khách hàng, tồn kho | `platform.shop_report` |
+
+#### Tenant Admin — Chủ doanh nghiệp (ThietLap)
+
+Quản lý **cấu hình mua hàng nội bộ** (không can thiệp giá, sản phẩm):
+
+| Chức năng | Mô tả | Resource |
+|-----------|-------|----------|
+| Hạn mức mua | Ngân sách mua hàng theo phòng ban/dự án | `setting.purchase_limit` |
+| Workflow phê duyệt | Ai duyệt yêu cầu mua, mức duyệt tự động | `setting.purchase_config` |
+| Phân quyền mua | Nhân viên nào được mua, được xem giá sỉ | `setting.purchase_config` |
+
+#### Nhân viên — User (BookMuaHang)
+
+| Chức năng | Mô tả | Resource |
+|-----------|-------|----------|
+| Shop ALUBOK | Duyệt danh mục, xem giá sỉ, đặt hàng | `purchase.shop` (read) |
+| Yêu cầu mua | Tạo/sửa/gửi duyệt yêu cầu mua | `purchase.request` (CRUD) |
+| Đơn mua hàng | Tạo/theo dõi đơn mua | `purchase.order` (CRUD) |
+
+### 8.2 Sơ đồ phân quyền tổng hợp
+
+```
+QuanTriAdmin (/admin) — Platform Admin (đội ALUBOK)
+├── platform.shop_product       ← Sản phẩm (CRUD, ảnh, thông số, phân loại)
+├── platform.shop_pricing       ← Bảng giá lẻ + giá sỉ theo tenant + VAT
+├── platform.shop_order         ← Đơn hàng B2C + B2B (xử lý, xuất kho, giao hàng)
+├── platform.shop_customer      ← Khách hàng B2C + quản lý tenant
+├── platform.shop_payment       ← Thanh toán, đối soát, hoàn tiền
+├── platform.shop_promotion     ← Chiết khấu, khuyến mãi, voucher
+├── platform.shop_shipping      ← Vận chuyển, phí ship, tracking
+├── platform.shop_invoice       ← Hóa đơn VAT điện tử
+├── platform.shop_content       ← Giao diện shop (banner, SEO)
+└── platform.shop_report        ← Báo cáo (doanh thu, SP bán chạy, khách hàng)
+
+ThietLap (tenant) — Tenant Admin (chủ doanh nghiệp)
+├── setting.purchase_config     ← Workflow phê duyệt, phân quyền mua
+└── setting.purchase_limit      ← Hạn mức/ngân sách mua hàng
+
+BookMuaHang (user) — Nhân viên
+├── purchase.shop               ← Shop ALUBOK (browse, xem giá sỉ, đặt hàng)
+├── purchase.request            ← Yêu cầu mua (CRUD)
+└── purchase.order              ← Đơn mua hàng (CRUD)
+```
+
+---
+
+## 9. Checklist implement
 
 | # | Task | Trạng thái |
 |---|------|-----------|
@@ -214,5 +284,7 @@ Trang chủ → "Mua hàng" → Fullscreen shop (giá lẻ, VAT đã gồm)
 | 8 | CartPanel (procurement vs e-commerce) | ⬜ |
 | 9 | Invoice service interface (Adapter pattern) | ⬜ |
 | 10 | Invoice providers (VNPT/Viettel/MISA stub) | ⬜ |
-| 11 | Tests | ⬜ |
-| 12 | Cập nhật docs (.md files) | ⬜ |
+| 11 | Platform Admin shop pages (`/admin`) | ⬜ |
+| 12 | Tenant admin purchase config (ThietLap) | ⬜ |
+| 13 | Tests | ⬜ |
+| 14 | Cập nhật docs (.md files) | ⬜ |

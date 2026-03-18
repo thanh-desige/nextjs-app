@@ -15,7 +15,7 @@ import ThietLapPage from "./ThietLap/src/ui/ThietLapPage";
 import BookTongQuanPage from "./BookTongQuan/src/ui/BookTongQuanPage";
 import BookMuaHangPage from "./BookMuaHang/src/ui/BookMuaHangPage";
 import BookBanHangPage from "./BookBanHang/src/ui/BookBanHangPage";
-import BookThietKeBocTach from "./BookThietKeBocTach";
+import BookThietKeBocTachModule from "./BookThietKeBocTachModule";
 import BookThuChiPage from "./BookThuChi/src/ui/BookThuChiPage";
 import BookTonKhoPage from "./BookTonKho/src/ui/BookTonKhoPage";
 import BookKeToanPage from "./BookKeToan/src/ui/BookKeToanPage";
@@ -126,7 +126,12 @@ export default function App(): React.ReactElement {
           {page === 2 && <BookMuaHangPage activeTab={tab ?? 'orders'} onTabChange={navigateToTab} />}
           {page === 3 && <BookBanHangPage activeTab={tab ?? 'quotes'} onTabChange={navigateToTab} />}
           {page === 4 && (
-            <BookThietKeBocTach sidebarCollapsed={sidebarCollapsed} />
+            <BookThietKeBocTachModule
+              activeTab={tab ?? 'projects'}
+              onTabChange={navigateToTab}
+              sidebarCollapsed={sidebarCollapsed}
+              onNavigateToBanHang={() => { navigateToPage(3, 'quotes'); }}
+            />
           )}
           {page === 5 && <BookThuChiPage activeTab={tab ?? 'receipts'} onTabChange={navigateToTab} />}
           {page === 6 && <BookTonKhoPage activeTab={tab ?? 'receipts'} onTabChange={navigateToTab} />}

@@ -5,7 +5,7 @@
 // ============================================================
 
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
 import {
   getModuleByPage,
   getModuleBySlug,
@@ -39,18 +39,43 @@ function parseUrl(): RouteState {
   return { page: mod.page, tab };
 }
 
+let currentSnapshot: RouteState = { page: 0, tab: null };
+const listeners = new Set<() => void>();
+
+function subscribe(cb: () => void) {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+
+function getSnapshot(): RouteState {
+  return currentSnapshot;
+}
+
+const SERVER_SNAPSHOT: RouteState = { page: 0, tab: null };
+
+function getServerSnapshot(): RouteState {
+  return SERVER_SNAPSHOT;
+}
+
+function updateSnapshot() {
+  currentSnapshot = parseUrl();
+  listeners.forEach((cb) => cb());
+}
+
 export function useRouteSync() {
-  const [state, setState] = useState<RouteState>(parseUrl);
+  const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const stateRef = useRef(state);
 
-  // Sync ref in effect (not during render)
+  // Sync ref
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
-  // On mount: normalize URL (add default tab slug if missing)
+  // On mount: parse URL, normalize, and notify
   useEffect(() => {
-    const { page, tab } = stateRef.current;
+    updateSnapshot();
+
+    const { page, tab } = currentSnapshot;
     if (page === 0) return;
 
     const mod = getModuleByPage(page);
@@ -72,7 +97,7 @@ export function useRouteSync() {
 
   // Browser back/forward
   useEffect(() => {
-    const handlePopState = () => setState(parseUrl());
+    const handlePopState = () => updateSnapshot();
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
@@ -88,7 +113,8 @@ export function useRouteSync() {
     }
 
     window.history.pushState({}, '', buildPath(mod.slug, tabSlug));
-    setState({ page, tab });
+    currentSnapshot = { page, tab };
+    listeners.forEach((cb) => cb());
   }, []);
 
   const navigateToTab = useCallback((tabKey: string) => {
@@ -99,12 +125,14 @@ export function useRouteSync() {
     if (!tabConfig) return;
 
     window.history.pushState({}, '', buildPath(mod.slug, tabConfig.slug));
-    setState(prev => ({ ...prev, tab: tabKey }));
+    currentSnapshot = { ...currentSnapshot, tab: tabKey };
+    listeners.forEach((cb) => cb());
   }, []);
 
   const navigateToHome = useCallback(() => {
     window.history.pushState({}, '', '/');
-    setState({ page: 0, tab: null });
+    currentSnapshot = { page: 0, tab: null };
+    listeners.forEach((cb) => cb());
   }, []);
 
   return {

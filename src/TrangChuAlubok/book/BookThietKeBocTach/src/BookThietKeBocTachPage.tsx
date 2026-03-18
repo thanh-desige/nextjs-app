@@ -30,6 +30,8 @@ import { DoorTemplateOverlay } from "./ui/components/DoorTemplateOverlay";
 import { DoorConfigDialog } from "./ui/components/DoorConfigDialog";
 import { PageExportDialog } from "./ui/components/PageExportDialog";
 import { ShareModal } from "./ui/components/ShareModal";
+import BomView from "./ui/views/BomView";
+import CutListView from "./ui/views/CutListView";
 
 // Hooks
 import {
@@ -70,12 +72,17 @@ const USE_CONTROLLED_MODE = true;
 
 interface BookThietKeBocTachPageProps {
   mainSidebarCollapsed?: boolean;
+  initialTab?: 'thietke' | 'filebom' | 'filebaogia';
 }
 
 export default function BookThietKeBocTachPage({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   mainSidebarCollapsed = false,
+  initialTab = 'thietke',
 }: BookThietKeBocTachPageProps = {}) {
+  // Canvas tab state
+  const [activeCanvasTab, setActiveCanvasTab] = useState<'thietke' | 'filebom' | 'filebaogia'>(initialTab);
+
   // Local state - MUST be declared first
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -292,6 +299,7 @@ export default function BookThietKeBocTachPage({
 
   // Project store
   const projectInfo = useProjectStore((state) => state.currentProject);
+  const calculateBom = useProjectStore((state) => state.calculateBom);
 
   // ĐIỀU KIỆN 1: executeCommandObject để thực thi Commands qua CadEngine
   const executeCommandObject = useEngineStore(
@@ -589,10 +597,9 @@ export default function BookThietKeBocTachPage({
       {/* Header 1 - Tab Navigation (z-index: 100 to show dropdown above Header2) */}
       <div style={{ position: "relative", zIndex: 100 }}>
         <Header1
-          activeTab="thietke"
+          activeTab={activeCanvasTab}
           onTabChange={(tab) => {
-            console.log("Switch to tab:", tab);
-            // TODO: Handle tab switch
+            setActiveCanvasTab(tab);
           }}
           autoSave={true}
           onAutoSaveChange={(enabled) => {
@@ -609,6 +616,8 @@ export default function BookThietKeBocTachPage({
         />
       </div>
 
+      {/* ── Tab: Thiết kế ── */}
+      {activeCanvasTab === 'thietke' && (<>
       {/* Header 2 - Toolbar (z-index: 50 to show dropdown above canvas) */}
       <div style={{ position: "relative", zIndex: 50 }}>
         <Header2
@@ -801,6 +810,25 @@ export default function BookThietKeBocTachPage({
             onToggle={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
           />
         </div>
+
+        {/* "Xuất BOM" button — inside canvas, bottom-right (offset by sidebar width) */}
+        <div style={{ position: 'absolute', bottom: 4, right: 284, zIndex: 18 }}>
+          <button
+            onClick={() => {
+              calculateBom();
+              setActiveCanvasTab('filebom');
+            }}
+            style={{
+              padding: '10px 20px', borderRadius: 8,
+              border: 'none', backgroundColor: '#f59e0b', color: '#1a1a2e',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(245,158,11,0.4)',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            📊 Xuất BOM →
+          </button>
+        </div>
       </div>
 
       {/* Header 3 - Command Line / Status Bar (z-index: 20) */}
@@ -817,6 +845,21 @@ export default function BookThietKeBocTachPage({
           onCommandExecuted={(cmd) => setLastCommand(cmd)}
         />
       </div>
+      </>)}
+
+      {/* ── Tab: Bóc tách (BOM) ── */}
+      {activeCanvasTab === 'filebom' && (
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <BomView />
+        </div>
+      )}
+
+      {/* ── Tab: Danh sách cắt ── */}
+      {activeCanvasTab === 'filebaogia' && (
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <CutListView />
+        </div>
+      )}
 
       {/* Command Palette Modal */}
       {isCommandPaletteOpen && (

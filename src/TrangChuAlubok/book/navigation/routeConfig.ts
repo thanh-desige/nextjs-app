@@ -40,7 +40,12 @@ export const MODULE_ROUTES: ModuleRoute[] = [
       { key: 'report-sales',  slug: 'bc-ban-hang',   label: 'BC Bán hàng',   group: 'Báo cáo' },
     ],
   },
-  { page: 4, slug: 'thiet-ke', label: 'Thiết kế & bóc tách' },
+  { page: 4, slug: 'thiet-ke', label: 'Thiết kế & bóc tách',
+    defaultTab: 'projects',
+    tabs: [
+      { key: 'projects',  slug: 'du-an',          label: 'Dự án',         group: 'Nghiệp vụ' },
+    ],
+  },
   {
     page: 5, slug: 'thu-chi', label: 'Thu - chi',
     defaultTab: 'receipts',
