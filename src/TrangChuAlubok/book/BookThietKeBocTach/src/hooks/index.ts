@@ -122,3 +122,6 @@ export type { PageSettings, TextSettings } from "./usePageSettings";
 // Canvas event handlers (STEP-5.26: inline callbacks extracted from BookThietKeBocTachPage.tsx)
 export { useCanvasEventHandlers } from "./useCanvasEventHandlers";
 export type { UseCanvasEventHandlersParams } from "./useCanvasEventHandlers";
+
+// Project sync (Phase 2: door count → soLuongBo, documentVersion → designRevision)
+export { useProjectSync } from "./useProjectSync";

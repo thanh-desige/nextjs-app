@@ -30,6 +30,7 @@ import { DoorTemplateOverlay } from "./ui/components/DoorTemplateOverlay";
 import { DoorConfigDialog } from "./ui/components/DoorConfigDialog";
 import { PageExportDialog } from "./ui/components/PageExportDialog";
 import { ShareModal } from "./ui/components/ShareModal";
+import { ImportDXFDialog } from "./ui/components/ImportDXFDialog";
 import BomView from "./ui/views/BomView";
 import CutListView from "./ui/views/CutListView";
 
@@ -49,6 +50,7 @@ import {
   useToolbar,
   useStyleHandlers,
   usePageSettings,
+  useProjectSync,
   type UseDoorHandlersParams,
 } from "./hooks";
 import { useCanvasEventHandlers } from "./hooks/useCanvasEventHandlers";
@@ -154,6 +156,9 @@ export default function BookThietKeBocTachPage({
   // Selection
   const { hasSelection, clearSelection, selectAll } = useSelection();
 
+  // Phase 2: Sync door count + designRevision to project
+  useProjectSync();
+
   // Door Templates
   const { selectedTemplate, insertTemplate, loadDefaultTemplates } =
     useDoorTemplates();
@@ -256,6 +261,9 @@ export default function BookThietKeBocTachPage({
   const [triggerDelete, setTriggerDelete] = useState(0);
   const [triggerClearSelection, setTriggerClearSelection] = useState(0);
   const [textScaleTrigger, setTextScaleTrigger] = useState(0);
+
+  // Zoom fit trigger — read from engineStore, incremented by zoomFit()
+  const zoomFitTrigger = useEngineStore((state) => state.zoomFitTrigger);
 
   // Polygon command input (for passing raw input to canvas when POLYGON is active)
   const [polygonCommandInput, setPolygonCommandInput] = useState<
@@ -384,6 +392,7 @@ export default function BookThietKeBocTachPage({
     activeTool,
     offsetDistance,
     setTriggerClearSelection,
+    isLocked: projectInfo?.isLocked,
   });
 
   // Toolbar (STEP-5.5: extracted to useToolbar)
@@ -408,6 +417,7 @@ export default function BookThietKeBocTachPage({
     setShowExportDialog,
     setShowImportDialog,
     setShowShareModal,
+    isLocked: projectInfo?.isLocked,
   });
 
   // Style handlers provided by useStyleHandlers hook (STEP-5.5)
@@ -716,6 +726,7 @@ export default function BookThietKeBocTachPage({
             triggerDelete={triggerDelete}
             triggerClearSelection={triggerClearSelection}
             textScaleTrigger={textScaleTrigger}
+            triggerZoomFit={zoomFitTrigger}
             currentStrokeStyle={currentStyle.strokeStyle}
             // ==================== TEXT Settings ====================
             textSettings={textSettings}
@@ -779,6 +790,30 @@ export default function BookThietKeBocTachPage({
             onPlaceClick={handleCanvasPlaceClick}
           />
         </div>
+
+        {/* Phase 7: Lock Banner — read-only mode overlay */}
+        {projectInfo?.isLocked && (
+          <div
+            style={{
+              position: "absolute",
+              top: 8,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 16,
+              background: "rgba(220, 38, 38, 0.9)",
+              color: "#fff",
+              padding: "6px 20px",
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 600,
+              pointerEvents: "none",
+              whiteSpace: "nowrap",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+            }}
+          >
+            🔒 Dự án đã khóa — Chế độ xem
+          </div>
+        )}
 
         {/* Left Sidebar - Layer 2 (above canvas, absolute positioning) */}
         <div
@@ -935,54 +970,13 @@ export default function BookThietKeBocTachPage({
         getDocumentData={() => getDocument()?.toJSON() ?? null}
       />
 
-      {/* Import Dialog (placeholder - TODO: implement DXF import) */}
+      {/* Import DXF Dialog */}
       {showImportDialog && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "rgba(0,0,0,0.6)",
-          }}
-          onClick={() => setShowImportDialog(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: "#1e1e2e",
-              border: "1px solid #444",
-              borderRadius: 12,
-              padding: "24px",
-              width: 400,
-              color: "#e0e0e0",
-              textAlign: "center",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-            }}
-          >
-            <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>Import file AutoCAD</h3>
-            <p style={{ color: "#888", fontSize: 13, margin: "0 0 16px" }}>
-              Tính năng Import DXF sẽ sớm được triển khai.
-              Hiện tại hỗ trợ định dạng: .dxf
-            </p>
-            <button
-              onClick={() => setShowImportDialog(false)}
-              style={{
-                padding: "8px 24px",
-                borderRadius: 6,
-                border: "1px solid #555",
-                backgroundColor: "transparent",
-                color: "#ccc",
-                cursor: "pointer",
-                fontSize: 13,
-              }}
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
+        <ImportDXFDialog
+          onClose={() => setShowImportDialog(false)}
+          getEngine={() => useEngineStore.getState().engine}
+          zoomFit={zoomFit}
+        />
       )}
     </div>
   );

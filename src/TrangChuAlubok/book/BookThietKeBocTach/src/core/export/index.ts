@@ -44,3 +44,6 @@ export {
   calculateBoundsWithDimSizes,
   downloadFile,
 } from "./ExportUtils";
+// DXF Import
+export { importFromDXF, tokenizeDXF, splitSections, parseLayers, aciToHex } from "./ImportDXF";
+export type { DXFImportOptions, DXFImportResult, DXFLayerInfo, DXFImportStats } from "./ImportDXF";

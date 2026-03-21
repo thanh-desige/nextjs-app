@@ -246,6 +246,7 @@ export interface CadDrawingCanvasProps {
   triggerDelete?: number;
   triggerClearSelection?: number;
   textScaleTrigger?: number;
+  triggerZoomFit?: number;
   currentStrokeStyle?: "solid" | "dashed" | "dotted" | "dashdot";
   onEntityCreated?: (entity: CadEntity) => void;
   onEntityUpdated?: (entity: CadEntity) => void;

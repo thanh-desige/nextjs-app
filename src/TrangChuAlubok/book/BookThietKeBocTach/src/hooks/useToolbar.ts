@@ -23,6 +23,8 @@ export interface UseToolbarParams {
   setShowExportDialog: React.Dispatch<React.SetStateAction<boolean>>;
   setShowImportDialog: React.Dispatch<React.SetStateAction<boolean>>;
   setShowShareModal: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Phase 7: Block mutating tools when project is locked */
+  isLocked?: boolean;
 }
 
 export interface UseToolbarReturn {
@@ -55,7 +57,30 @@ export function useToolbar({
   setShowExportDialog,
   setShowImportDialog,
   setShowShareModal,
+  isLocked,
 }: UseToolbarParams): UseToolbarReturn {
+  // Phase 7: Tool IDs that are safe in locked (view-only) mode
+  const VIEW_SAFE_TOOLS = useMemo(
+    () =>
+      new Set([
+        "select",
+        "pan",
+        "zoom-in",
+        "zoom-out",
+        "zoom-fit",
+        "export",
+        "share",
+        // Osnap toggles are read-only state
+        "endpoint",
+        "midpoint",
+        "center",
+        "intersection",
+        "perpendicular",
+        "nearest",
+      ]),
+    [],
+  );
+
   // ===== Tool Groups =====
   const toolGroups = useMemo(
     () => [
@@ -255,6 +280,12 @@ export function useToolbar({
   // ===== Handle Tool Selection from Header2 =====
   const handleSelectTool = useCallback(
     (toolId: string) => {
+      // Phase 7: Block mutating tools when locked
+      if (isLocked && !VIEW_SAFE_TOOLS.has(toolId)) {
+        console.warn("Project locked — tool blocked:", toolId);
+        return;
+      }
+
       // Handle view tools
       if (toolId === "zoom-in") {
         if (engine) engine.zoom(1.25);
@@ -297,6 +328,8 @@ export function useToolbar({
       handleToolChange(toolId);
     },
     [
+      isLocked,
+      VIEW_SAFE_TOOLS,
       engine,
       zoomFit,
       handleToolChange,

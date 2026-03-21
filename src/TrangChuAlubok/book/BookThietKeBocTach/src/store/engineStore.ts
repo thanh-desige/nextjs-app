@@ -82,6 +82,9 @@ export interface EngineStoreState {
   // Document version counter - triggers re-render when document data changes
   documentVersion: number;
 
+  // Zoom fit trigger — incremented when canvas should zoom-to-fit all entities
+  zoomFitTrigger: number;
+
   // Layer state
   layers: LayerData[];
   activeLayerId: string;
@@ -273,6 +276,7 @@ export const useEngineStore = create<EngineStore>()(
     canUndo: false,
     canRedo: false,
     documentVersion: 0,
+    zoomFitTrigger: 0,
     layers: defaultLayers,
     activeLayerId: "0",
     useByLayer: true, // Default to ByLayer mode (CAD standard)
@@ -394,10 +398,11 @@ export const useEngineStore = create<EngineStore>()(
       if (engine) {
         engine.zoomToFit();
         const viewport = engine.getViewport();
-        set({
+        set((state) => ({
           zoom: viewport.zoom,
           panOffset: { x: viewport.center.x, y: viewport.center.y },
-        });
+          zoomFitTrigger: state.zoomFitTrigger + 1,
+        }));
       }
     },
 
@@ -516,6 +521,13 @@ export const useEngineStore = create<EngineStore>()(
 
     // ĐIỀU KIỆN 1: Execute Command Object qua CadEngine
     executeCommandObject: (command: ICommand): CommandResult | null => {
+      // Phase 7: Lock guard — block ALL mutations when project is locked
+      const { useProjectStore } = require("./projectStore");
+      if (useProjectStore.getState().currentProject?.isLocked) {
+        console.warn("Project is locked — command blocked:", command);
+        return null;
+      }
+
       const { engine, documentVersion } = get();
       if (!engine) {
         console.warn("Engine not available for command execution");
@@ -553,6 +565,8 @@ export const useEngineStore = create<EngineStore>()(
 
     // Document actions - ĐIỀU KIỆN 1: Use History system
     undo: () => {
+      const { useProjectStore } = require("./projectStore");
+      if (useProjectStore.getState().currentProject?.isLocked) return;
       const { engine, documentVersion } = get();
       if (engine) {
         const success = engine.undo();
@@ -576,6 +590,8 @@ export const useEngineStore = create<EngineStore>()(
     },
 
     redo: () => {
+      const { useProjectStore } = require("./projectStore");
+      if (useProjectStore.getState().currentProject?.isLocked) return;
       const { engine, documentVersion } = get();
       if (engine) {
         const success = engine.redo();

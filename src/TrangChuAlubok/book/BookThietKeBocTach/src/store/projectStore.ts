@@ -37,15 +37,37 @@ export interface ProjectInfo {
   created: string;
   modified: string;
   status: "draft" | "active" | "completed" | "archived";
-  /** Trạng thái chức năng (hiển thị trên bảng dự án) */
-  projectStatus?: "designing" | "quoted" | "done" | "locked";
+  /** Trạng thái quy trình (tự tính từ dữ liệu) */
+  projectStatus?: 'draft' | 'designing' | 'quoted' | 'contracted' | 'deposited' | 'in_production';
   /** Mã dự án tự sinh (DA 1, DA 2...) */
   projectCode?: string;
   /** Nhân viên phụ trách */
   employee?: string;
   thumbnail?: string;
   tags?: string[];
-  notes?: string; // Ghi chú thêm
+  notes?: string;
+
+  // ── Revision tracking ──
+  designRevision: number;        // Tăng mỗi lần sửa canvas
+  bomRevision: number;           // Tăng mỗi lần sync BOM
+  bomDesignRevision: number;     // designRevision tại thời điểm BOM sync
+
+  // ── Chứng từ liên kết ──
+  quoteId?: string;
+  quoteCode?: string;            // VD: BG-0001
+  quoteDesignRevision?: number;
+  contractId?: string;
+  contractCode?: string;         // VD: HD-0001
+  receiptId?: string;
+  receiptCode?: string;          // VD: PT-0001
+  productionOrderId?: string;
+  productionOrderCode?: string;  // VD: LSX-0001
+
+  // ── Lock ──
+  isLocked: boolean;
+
+  // ── Đếm từ canvas ──
+  soLuongBo: number;             // Tổng số bộ cửa trên canvas
 }
 
 export interface BomItem {
@@ -205,10 +227,15 @@ export const useProjectStore = create<ProjectStore>()(
           ...info,
           id: generateId(),
           projectCode: info.projectCode ?? `DA ${maxCode + 1}`,
-          projectStatus: info.projectStatus ?? 'designing',
+          projectStatus: info.projectStatus ?? 'draft',
           created: now,
           modified: now,
           status: info.status ?? "draft",
+          designRevision: info.designRevision ?? 0,
+          bomRevision: info.bomRevision ?? 0,
+          bomDesignRevision: info.bomDesignRevision ?? 0,
+          isLocked: info.isLocked ?? false,
+          soLuongBo: info.soLuongBo ?? 0,
         };
 
         set({ currentProject: project });
@@ -291,6 +318,14 @@ export const useProjectStore = create<ProjectStore>()(
           const doors = useDoorStore.getState().getAllDoors();
           if (doors.length === 0) {
             set({ bomItems: [], bomLastCalculated: new Date().toISOString() });
+            const currentProject = get().currentProject;
+            if (currentProject) {
+              get().updateProject({
+                bomRevision: (currentProject.bomRevision ?? 0) + 1,
+                bomDesignRevision: currentProject.designRevision ?? 0,
+                soLuongBo: 0,
+              });
+            }
             get().calculateQuote();
             return;
           }
@@ -371,6 +406,17 @@ export const useProjectStore = create<ProjectStore>()(
           }
 
           set({ bomItems: items, bomLastCalculated: new Date().toISOString() });
+
+          // Phase 2: Cập nhật BOM revision tracking
+          const currentProject = get().currentProject;
+          if (currentProject) {
+            get().updateProject({
+              bomRevision: (currentProject.bomRevision ?? 0) + 1,
+              bomDesignRevision: currentProject.designRevision ?? 0,
+              soLuongBo: doors.length,
+            });
+          }
+
           get().calculateQuote();
 
           // Also update area

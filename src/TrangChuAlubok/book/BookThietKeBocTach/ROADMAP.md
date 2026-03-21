@@ -65,17 +65,18 @@ Xây dựng ứng dụng CAD hoàn chỉnh với Clean Architecture, tuân thủ
 | Phase 5.3: SVG Export                    | ✅ DONE    | 63               | exportDocumentToSVG, IEntity-based        |
 | Phase 5.4: PNG Export                    | ✅ DONE    | 49               | preparePNGExport, renderIEntityToCtx      |
 | Phase 5.5: PDF Export                    | ✅ DONE    | 62               | exportDocumentToPDF, PDF 1.4, no ext deps |
-| **Tổng tests**                           |            | **875/875 pass** | **19 test suites, ~7s**                   |
+| **PHASE NEXT: DXF Import**               | ✅ DONE    | 48               | Parse DXF → IEntity[], 7 DXF types, layer mapping, RECT auto-detect |
+| **Tổng tests**                           |            | **1500/1500 pass** | **52 test suites, ~8s**                   |
 
 ### 🔮 Tương lai — Thứ tự ưu tiên
 
 | Phase                                    | Trạng thái | Ưu tiên  | Mô tả                                                |
 | ---------------------------------------- | ---------- | -------- | ----------------------------------------------------- |
-| PHASE NEXT: DXF Import                   | ⬜ TODO    | ⭐ Cao   | Parse DXF → IEntity[], 8 entity types, layer mapping  |
-| PHASE NEXT: SVG Import                   | ⬜ TODO    | Trung bình | Parse SVG → IEntity[], path/rect/circle/text         |
-| PHASE NEXT: SPLINE tool                  | ⬜ TODO    | Trung bình | B-spline/NURBS curve, control points                 |
-| PHASE NEXT: HATCH / BLOCK / ARRAY        | ⬜ TODO    | Thấp     | Advanced drawing tools                                |
-| PHASE 4: Geometry Abstraction            | ⬜ TODO    | Cao      | IVector, Vec3, ICanvasAdapter — 3D-ready foundation   |
+| PHASE NEXT: DXF Import                   | ✅ DONE    | ⭐ Cao   | Parse DXF → IEntity[], 7 DXF types → 8 entity types, layer mapping  |
+| PHASE NEXT: SVG Import                   | ⏸ CHỜ     | Trung bình | Parse SVG → IEntity[], path/rect/circle/text — chờ chỉ đạo |
+| PHASE NEXT: SPLINE tool                  | ⏸ CHỜ     | Trung bình | B-spline/NURBS curve, control points — chờ chỉ đạo   |
+| PHASE NEXT: HATCH / BLOCK / ARRAY        | ⏸ CHỜ     | Thấp     | Advanced drawing tools — chờ chỉ đạo                  |
+| PHASE 4: Geometry Abstraction            | ⏸ CHỜ     | Cao      | IVector, Vec3, ICanvasAdapter — 3D-ready — chờ chỉ đạo |
 | PHASE 6: Backend + API                   | ⬜ TODO    | —        | PostgreSQL, NextAuth, API routes, webhooks             |
 | PHASE 7: ERP + Performance               | ⬜ TODO    | —        | Dashboard, Sales, Inventory, Door Engines, 60fps       |
 | PHASE 9: Collaboration                   | ⬜ TODO    | —        | Real-time, versioning, cloud                          |

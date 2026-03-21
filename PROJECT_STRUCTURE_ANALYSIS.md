@@ -1,8 +1,8 @@
 # 📁 CẤU TRÚC DỰ ÁN NEXTJS-APP (ALUBOK)
 
-> Cập nhật: **19/03/2026** — Scan trực tiếp từ cây thư mục thực tế
-> Tổng: **~530 files** (485 .ts/.tsx, 35 .md, còn lại config/assets)
-> Tests: **1336/1336 pass, 43 suites**
+> Cập nhật: **20/03/2026** — Scan trực tiếp từ cây thư mục thực tế
+> Tổng: **~535 files** (490 .ts/.tsx, 37 .md, còn lại config/assets)
+> Tests: **1500 pass (48 mới DXF Import), 52 suites**
 
 ---
 
@@ -389,20 +389,21 @@ core/dimensions/
 └── index.ts
 ```
 
-### 5.7 core/export/ — Xuất file (5 formats, 260 tests)
+### 5.7 core/export/ — Xuất/Nhập file (5 export + 1 import, 308 tests)
 
 ```
 core/export/
 ├── ExportManager.ts                # Thin facade (~222 dòng) — delegate cho 5 format modules
 ├── ExportJSON.ts                   # JSON export/import — roundtrip, validateCadJSON
 ├── ExportDXF.ts                    # DXF export — HEADER/TABLES/ENTITIES/EOF, ACI colors
+├── ImportDXF.ts                    # DXF import — tokenize/parse/convert, 7 DXF types → IEntity[] (~740 dòng)
 ├── ExportSVGCore.ts                # SVG export — IEntity-based, Y-flip viewBox (~488 dòng)
 ├── ExportPNGCore.ts                # PNG export — ICanvasContext mock, renderIEntityToCtx (~370 dòng)
 ├── ExportPDFCore.ts                # PDF 1.4 export — pure string generation, no ext libs (~695 dòng)
 ├── ExportPNG.ts                    # PNG legacy (canvas-based)
 ├── ExportSVG.ts                    # SVG legacy (canvas-based)
 ├── ExportUtils.ts                  # calculateBounds, downloadFile (~423 dòng)
-└── index.ts                        # Barrel re-exports tất cả 5 formats
+└── index.ts                        # Barrel re-exports tất cả 5 formats + DXF import
 ```
 
 ### 5.8 core/ — Các module còn lại
@@ -470,6 +471,11 @@ domain/
 │   ├── AccessoryCatalog.ts         # Catalog phụ kiện
 │   ├── GlassCatalog.ts             # Catalog kính
 │   └── ProfileCatalog.ts           # Catalog thanh nhôm
+├── computeProjectStatus.ts         # ⭐ Auto-compute trạng thái dự án (revision-based, priority chain)
+├── createQuoteFromProject.ts       # ⭐ BOM→Quote conversion, auto BG-xxxx, liên kết 2 chiều (Phase 3)
+├── createContractFromQuote.ts      # ⭐ Quote→Contract conversion, auto HD-xxxx, liên kết 2 chiều (Phase 4)
+├── createReceiptFromContract.ts   # ⭐ Contract→CashReceipt conversion, auto PT-xxxx, liên kết 2 chiều (Phase 5)
+├── createProductionOrderFromReceipt.ts # ⭐ Receipt→ProductionOrder, auto LSX-xxxx, BOM→items (Phase 6)
 ├── projects/                       # Quản lý dự án
 │   ├── Project.types.ts            # Project data types
 │   ├── ProjectRepository.ts        # Repository interface
@@ -712,6 +718,7 @@ ui/components/
 ├── ExportDialog.tsx                # Export dialog (legacy)
 ├── ExportDialog.module.css         # Export dialog styles
 ├── PageExportDialog.tsx            # Page export dialog (IEntity-based, ~300 dòng)
+├── ImportDXFDialog.tsx             # DXF import dialog — file picker, preview stats, import (~230 dòng)
 ├── ProjectInfoDropdown.tsx         # Project info dropdown
 ├── DoorConfigDialog/               # Door config sub-components
 │   ├── ParametricPreview.tsx       # Parametric preview component
@@ -831,7 +838,8 @@ __tests__/
 │   │   ├── exportDXF.test.ts       # 47 tests — DXF export
 │   │   ├── exportSVG.test.ts       # 63 tests — SVG export
 │   │   ├── exportPNG.test.ts       # 49 tests — PNG export
-│   │   └── exportPDF.test.ts       # 62 tests — PDF 1.4 export
+│   │   ├── exportPDF.test.ts       # 62 tests — PDF 1.4 export
+│   │   └── importDXF.test.ts       # 48 tests — DXF import
 │   ├── history/
 │   │   └── historyBypass.test.ts   # 10 tests — history bypass block
 │   └── selection/
@@ -841,7 +849,15 @@ __tests__/
     └── bom/
         └── bom.test.ts             # 34 tests — BOM, CutListOptimizer, GlassCut
 
-tests/
+tests/                               # ⭐ Quy trình dự án tests (Phase 1-7)
+├── computeProjectStatus.test.ts     # 15 tests — 7 trạng thái + revision + isLocked
+├── projectSyncPhase2.test.ts        # 15 tests — BOM sync, cascade, soLuongBo
+├── createQuoteFromProject.test.ts   # 13 tests — BOM→Quote, auto BG-xxxx
+├── createContractFromQuote.test.ts  # 13 tests — Quote→Contract, auto HD-xxxx
+├── createReceiptFromContract.test.ts # 12 tests — Contract→Receipt, auto PT-xxxx
+├── createProductionOrderFromReceipt.test.ts # 10 tests — Receipt→LSX, auto LSX-xxxx
+├── canvasLockPhase7.test.ts         # 23 tests — Lock guard, VIEW_SAFE_TOOLS, keyboard lock
+├── revisionCascadePhase8.test.ts    # 15 tests — staleDocuments, cascade, re-create flow
 └── PREVIEW_ARCHITECTURE_TEST_CHECKLIST.md  # Checklist test kiến trúc preview
 ```
 
@@ -870,6 +886,8 @@ src/TrangChuAlubok/book/BookThietKeBocTach/src/
 │
 └── docs/                            # Tài liệu
     ├── docs_history_commit.md       # 🔴 Session history (cập nhật mỗi task)
+    ├── QUY_TRINH_DU_AN.md           # ⭐ Quy trình dự án: 8 bước, revision, cascade
+    ├── ROADMAP_QUY_TRINH.md         # ⭐ Roadmap 8 phases triển khai quy trình
     ├── AUTOCAD_BEHAVIOR_RULES.md    # 14 nguyên tắc UX theo chuẩn AutoCAD
     ├── 3D_READY_ARCHITECTURE.md     # Kiến trúc sẵn sàng 3D
     ├── PREVIEW_CONTRACT.md          # Contract dữ liệu Preview
@@ -882,11 +900,11 @@ src/TrangChuAlubok/book/BookThietKeBocTach/src/
 
 | Metric | Giá trị |
 |--------|---------|
-| Tổng files | ~530 |
-| Files .ts/.tsx | ~485 |
-| Files .md | 35 |
-| Tests | **1273/1273 pass** |
-| Test suites | **41** |
+| Tổng files | ~535 |
+| Files .ts/.tsx | ~490 |
+| Files .md | 37 |
+| Tests | **1366 pass (30 mới)** |
+| Test suites | **45** |
 | Test time | **~16s** |
 | Module folders (book/) | 11 (shared, DanhMuc, BookTongQuan, BookThietKeBocTach, BookBanHang, BookMuaHang, BookTonKho, BookThuChi, BookKeToan, BookSanXuatThiCong, ThietLap) |
 | Thư mục cấp 1 (trong BookThietKeBocTach/src/) | 15 (core, domain, door-engines, systems, adapters, analysis, hooks, store, ui, docs, tests, types, assets, __tests__) |

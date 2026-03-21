@@ -72,7 +72,7 @@ export default function BookThietKeBocTachModule({
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ flex: 1, overflow: 'hidden' }}>
-        <ProjectListView onOpenCanvas={handleOpenCanvas} />
+        <ProjectListView onOpenCanvas={handleOpenCanvas} onNavigateToBanHang={onNavigateToBanHang ? () => onNavigateToBanHang() : undefined} />
       </div>
     </div>
   );

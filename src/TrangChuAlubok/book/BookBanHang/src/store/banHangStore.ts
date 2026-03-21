@@ -1,11 +1,11 @@
 // ============================================================
 // BanHang Store — Zustand + persist
-// Manages Quotes (báo giá) and Sales Orders (đơn bán hàng)
+// Manages Quotes (báo giá), Contracts (hợp đồng) and Sales Orders (đơn bán hàng)
 // ============================================================
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Quote, SalesOrder } from '../types';
+import type { Quote, SalesOrder, Contract } from '../types';
 import { logActivityDirect } from '../../../shared/src/hooks/useLogActivity';
 
 // ── Seed Quotes ──────────────────────────────────────────────
@@ -115,11 +115,17 @@ const SEED_ORDERS: SalesOrder[] = [
 interface BanHangState {
   quotes: Quote[];
   orders: SalesOrder[];
+  contracts: Contract[];
   // Quote setters
   setQuotes: (q: Quote[]) => void;
   addQuote: (q: Quote) => void;
   updateQuote: (quoteId: string, patch: Partial<Quote>) => void;
   deleteQuote: (quoteId: string) => void;
+  // Contract setters
+  setContracts: (c: Contract[]) => void;
+  addContract: (c: Contract) => void;
+  updateContract: (contractId: string, patch: Partial<Contract>) => void;
+  deleteContract: (contractId: string) => void;
   // Order setters
   setOrders: (o: SalesOrder[]) => void;
   addOrder: (o: SalesOrder) => void;
@@ -129,9 +135,12 @@ interface BanHangState {
   resetAll: () => void;
 }
 
+const SEED_CONTRACTS: Contract[] = [];
+
 const INITIAL_STATE = {
   quotes: SEED_QUOTES,
   orders: SEED_ORDERS,
+  contracts: SEED_CONTRACTS,
 };
 
 export const useBanHangStore = create<BanHangState>()(
@@ -157,6 +166,26 @@ export const useBanHangStore = create<BanHangState>()(
           quotes: s.quotes.filter(q => q.quoteId !== quoteId),
         }));
         logActivityDirect('BanHang', 'delete', 'quote', quoteId, code, `Xóa báo giá ${code}`);
+      },
+
+      setContracts: (contracts) => set({ contracts }),
+      addContract: (c) => {
+        set((s) => ({ contracts: [...s.contracts, c] }));
+        logActivityDirect('BanHang', 'create', 'contract', c.contractId, c.contractCode, `Tạo hợp đồng ${c.contractCode}`);
+      },
+      updateContract: (contractId, patch) => {
+        const code = get().contracts.find(c => c.contractId === contractId)?.contractCode ?? contractId;
+        set((s) => ({
+          contracts: s.contracts.map(c => c.contractId === contractId ? { ...c, ...patch } : c),
+        }));
+        logActivityDirect('BanHang', 'update', 'contract', contractId, code, `Cập nhật hợp đồng ${code}`);
+      },
+      deleteContract: (contractId) => {
+        const code = get().contracts.find(c => c.contractId === contractId)?.contractCode ?? contractId;
+        set((s) => ({
+          contracts: s.contracts.filter(c => c.contractId !== contractId),
+        }));
+        logActivityDirect('BanHang', 'delete', 'contract', contractId, code, `Xóa hợp đồng ${code}`);
       },
 
       setOrders: (orders) => set({ orders }),

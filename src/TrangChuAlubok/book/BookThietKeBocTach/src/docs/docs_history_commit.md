@@ -1,7 +1,122 @@
 # 📋 CONVERSATION LOG — BookThietKeBocTach (CAD Module)
 
 > Chỉ ghi chức năng **đã hoàn thành**. Mỗi entry = 1 task hoàn chỉnh.
-> Tests hiện tại: **1336/1336 pass, 43 suites**
+> Tests hiện tại: **1500 pass (48 mới DXF Import), 52 suites**
+
+---
+
+## Session — PHASE NEXT: DXF Import
+
+### DXF Import — Full Implementation
+
+- **ImportDXF.ts** (~740 dòng): DXF parser hoàn chỉnh
+  - `tokenizeDXF()`: DXF text → DXFPair[] (code/value pairs)
+  - `splitSections()`: pairs → DXFSection[] (HEADER, TABLES, ENTITIES)
+  - `parseLayers()`: TABLES section → DXFLayerInfo[] (name, color, frozen, locked, visible)
+  - `aciToHex()`: ACI color index → hex string (reverse of rgbToAciColor)
+  - `dxfLinetypeToStrokeStyle()`: DASHED→dashed, DOT→dotted, DASHDOT→dashdot
+  - Entity converters: LINE, CIRCLE, ARC, ELLIPSE, LWPOLYLINE (auto-detect RECT), TEXT, MTEXT
+  - `importFromDXF(content, options?)`: Main entry → DXFImportResult
+  - `scaleEntity()`: Scale geometry cho tất cả entity types
+- **ImportDXFDialog.tsx** (~230 dòng): File picker UI + preview stats + import action
+  - Drag & drop zone, file stats grid (entity count, by-type, layers, skipped)
+  - `doc.addEntities()` + `doc.layers.createLayer()` + `setDocumentVersion()` cho re-render
+- **importDXF.test.ts** (~450 dòng): 48 tests, 15 describe blocks
+  - tokenizeDXF(4), splitSections(2), parseLayers(4), aciToHex(2), LINE(4), CIRCLE(2), ARC(2), ELLIPSE(2), LWPOLYLINE(4), TEXT(3), MTEXT(2), Layer mapping(3), Scale(3), Stats(6), Linetype(4), Roundtrip(1)
+- **Wired into BookThietKeBocTachPage.tsx**: Thay placeholder dialog → ImportDXFDialog component
+- **Full suite**: 52 suites, 1500 tests — tất cả pass
+
+---
+
+## Session — 20/03/2026
+
+### Quy trình Dự án — Phase 1 (UI + Data)
+
+- **Tài liệu quy trình**: Tạo `QUY_TRINH_DU_AN.md` — 10 mục quy trình nghiệp vụ, rule ưu tiên, revision tracking, cascade invalidation
+- **Roadmap**: Tạo `ROADMAP_QUY_TRINH.md` — 8 phases triển khai chi tiết
+- **ProjectInfo mở rộng**: Thêm fields `designRevision`, `bomRevision`, `bomDesignRevision`, `quoteId/Code`, `contractId/Code`, `receiptId/Code`, `productionOrderId/Code`, `isLocked`, `soLuongBo`, `quoteDesignRevision`
+- **projectStatus type**: Đổi từ `draft|designing|quoted|done|locked` → `draft|designing|quoted|contracted|deposited|in_production`
+- **computeProjectStatus()**: Hàm tự tính trạng thái từ dữ liệu thật, 7 bước ưu tiên, revision validation, sub-rule BOM sync
+- **Sidebar "Quy trình"**: Đổi "Lọc dự án" → "Quy trình" với 8 mục (Tất cả + 7 bước + Đã khóa)
+- **Bỏ StatusDropdown**: Cột Hiện trạng = badge chỉ đọc (pill có màu theo trạng thái)
+- **Cột "Số lượng" (SL)**: Hiển thị `soLuongBo` — tổng bộ cửa trên canvas
+- **Cột "Liên kết"**: Thay cột "..." — hiển thị mã chứng từ (BG/HD/PT/LSX) hoặc "Tạo báo giá" / "Cập nhật báo giá"
+- **Cột "🔒" (Khóa)**: Icon ổ khóa toggle, chỉ hiện khi đã có LSX
+- **15 unit tests**: Cover tất cả 7 trạng thái + revision mismatch + cascade invalidation + isLocked tách biệt
+
+### Quy trình Dự án — Phase 2 (Auto-compute)
+
+- **calculateBom() revision sync**: Sau mỗi lần tính BOM → `bomRevision++`, `bomDesignRevision = designRevision`, `soLuongBo = doors.length`
+- **useProjectSync hook**: Tự sync `doorCount → soLuongBo` (từ doorStore) + `documentVersion → designRevision++` (từ engineStore)
+- **Hook mount**: `useProjectSync()` gọi trong `BookThietKeBocTachPage.tsx` sau `useSelection()`
+- **Barrel export**: Thêm `useProjectSync` vào `hooks/index.ts`
+- **15 unit tests Phase 2**: BOM sync detection, cascade invalidation, bomRevision tracking, soLuongBo transitions
+- **Full suite**: 45 suites, 1366 tests — tất cả pass
+
+### Quy trình Dự án — Phase 3 (Liên kết Bán hàng — Báo giá)
+
+- **Quote type mở rộng**: Thêm `projectId?: string`, `designRevision?: number` vào Quote interface (`banHang.types.ts`)
+- **createQuoteFromProject service**: Tạo `domain/createQuoteFromProject.ts` — BOM→QuoteItem[] conversion, auto BG-xxxx code generation, calcTotals
+- **createQuoteFromProject()**: Đọc BOM → tạo Quote → banHangStore.addQuote + link ngược ProjectInfo (quoteId, quoteCode, quoteDesignRevision)
+- **updateQuoteFromProject()**: Re-import BOM → update Quote → reset draft + update revision
+- **ActionCell onClick**: 3 handlers: onCreateQuote, onUpdateQuote, onViewQuote — separate click per actionType
+- **Navigation wiring**: `onNavigateToBanHang` prop chain: BookThietKeBocTachModule → ProjectListView, navigate to BanHang module with quoteId
+- **13 unit tests Phase 3**: nextQuoteCode, bomToQuoteItems, full create/update flow, totals calculation, error cases
+- **Full suite**: 46 suites, 1379 tests — tất cả pass
+
+### Quy trình Dự án — Phase 4 (Liên kết Hợp đồng)
+
+- **Contract types**: Thêm Contract interface + ContractStatus (draft|signed|completed|cancelled) vào `banHang.types.ts`
+- **BanHangTab mở rộng**: Thêm 'contracts' tab, routeConfig cập nhật
+- **banHangStore contract CRUD**: contracts[], addContract, updateContract, deleteContract
+- **createContractFromQuote service**: Tạo `domain/createContractFromQuote.ts` — Quote→Contract conversion, auto HD-xxxx, 30% deposit, liên kết 2 chiều
+- **ContractList.tsx**: UI danh sách hợp đồng với search, filter, status badge, summary
+- **computeProjectStatus update**: 'quoted' actionType đổi từ view_quote → create_contract ("Tạo hợp đồng")
+- **ActionCell wiring**: Thêm onCreateContract, onViewContract handlers, xử lý create_contract + view_contract
+- **13 unit tests Phase 4**: nextContractCode, items copy, totals, deposit, linking, status transition, error cases
+- **Full suite**: 47 suites, 1392 tests — tất cả pass
+
+### Quy trình Dự án — Phase 5 (Liên kết Thu chi — Phiếu thu)
+
+- **CashReceipt type mở rộng**: Thêm `projectId`, `contractId`, `contractCode` vào CashReceipt interface (`thuChi.types.ts`)
+- **createReceiptFromContract service**: Tạo `domain/createReceiptFromContract.ts` — Contract→CashReceipt, auto PT-xxxx, amount = depositAmount (30%), status = confirmed
+- **Liên kết 2 chiều**: Receipt có projectId/contractId/contractCode, ProjectInfo nhận receiptId/receiptCode
+- **computeProjectStatus update**: Thêm 'create_receipt' vào actionType, 'contracted' → actionType = 'create_receipt' ("Tạo phiếu thu")
+- **ActionCell wiring**: Thêm onCreateReceipt, onViewReceipt handlers, split view_receipt riêng với onClick callback
+- **ProjectListView**: Props mới `onNavigateToThuChi`, handleCreateReceipt + handleViewReceipt callbacks
+- **12 unit tests Phase 5**: nextReceiptCode, amount = deposit, linking, customer info, status confirmed, description, error cases, computeProjectStatus integration
+- **Full suite**: 48 suites, 1404 tests — tất cả pass
+
+### Quy trình Dự án — Phase 6 (Liên kết Sản xuất — Lệnh SX)
+
+- **createProductionOrderFromReceipt service**: Tạo `domain/createProductionOrderFromReceipt.ts` — BOM→ProductionOrderItem[], auto LSX-xxxx, status=new, liên kết 2 chiều
+- **computeProjectStatus update**: Thêm 'create_production_order' vào actionType, 'deposited' → actionType = 'create_production_order' ("Tạo lệnh SX")
+- **ActionCell wiring**: Thêm onCreateProductionOrder, onViewProductionOrder handlers, view_production_order có onClick callback
+- **ProjectListView**: Props mới `onNavigateToSanXuat`, handleCreateProductionOrder + handleViewProductionOrder callbacks
+- **10 unit tests Phase 6**: LSX-xxxx code, BOM→items, completedQty=0, linking, status transition, error case
+- **Full suite**: 49 suites, 1414 tests — tất cả pass
+
+### Quy trình Dự án — Phase 7 (Khóa/Mở khóa Canvas)
+
+- **engineStore lock guard**: `executeCommandObject()` kiểm tra `isLocked` trước khi execute — nuclear safety net chặn MỌI mutation
+- **undo/redo lock guard**: `undo()` và `redo()` cũng kiểm tra `isLocked` — không cho phép undo/redo khi khóa
+- **Lock banner overlay**: Khi `projectInfo.isLocked=true`, hiển thị banner "🔒 Dự án đã khóa — Chế độ xem" trên canvas (absolute, z-16, pointerEvents: none)
+- **useToolbar lock gate**: Thêm `isLocked` param, `VIEW_SAFE_TOOLS` whitelist (select, pan, zoom, export, share, osnap). Mutating tools bị chặn khi locked
+- **useKeyboardShortcuts lock gate**: Thêm `isLocked` param. Cho phép Ctrl+C (copy), Ctrl+A (select all), ESC. Chặn Ctrl+V, Delete, command buffer khi locked
+- **BookThietKeBocTachPage wiring**: Truyền `isLocked: projectInfo?.isLocked` xuống useToolbar + useKeyboardShortcuts
+- **23 unit tests Phase 7**: computeProjectStatus in_production, ProjectStore isLocked toggle, VIEW_SAFE_TOOLS whitelist (12 tools), handleSelectTool lock gate, keyboard lock gate (7 shortcuts), full lock/unlock cycle
+- **Full suite**: 50 suites, 1437 tests — tất cả pass
+
+### Quy trình Dự án — Phase 8 (Revision tracking + Invalidation cascade)
+
+- **staleDocuments field**: Thêm `staleDocuments: StaleDocumentType[]` vào `StatusResult` — liệt kê chứng từ mất hiệu lực (quote, contract, receipt, production_order)
+- **computeProjectStatus update**: Thu thập tất cả stale docs dùng `hasStaleDocument()` → trả về trong mọi StatusResult
+- **StaleBadge component**: Hiển "⚠ Phiên bản cũ" badge màu amber với tooltip chi tiết (tên chứng từ Việt hóa)
+- **ProjectRow update**: Hiển StaleBadge bên cạnh ActionCell khi có stale documents
+- **Auto-increment designRevision**: Đã có từ Phase 2 (useProjectSync hook)
+- **Cascade invalidation logic**: Đã có từ Phase 1-2 (computeProjectStatus priority chain + isDocumentValid)
+- **15 unit tests Phase 8**: staleDocuments population, full cascade (in_production→designing), re-create flow, partial invalidation, edge cases, label mapping
+- **Full suite**: 51 suites, 1452 tests — tất cả pass
 
 ---
 

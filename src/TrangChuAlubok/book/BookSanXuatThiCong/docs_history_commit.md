@@ -46,3 +46,12 @@
 
 **Totals**: 19 source files + 2 test files = 21 files, 54 tests pass
 **Project total**: 1243 tests, 40 suites
+
+---
+
+## 21/03/2026 — Phase 6: Liên kết TKBT → Lệnh SX
+
+### Kết nối từ quy trình dự án
+- Service `createProductionOrderFromReceipt(project)` trong module TKBT tạo lệnh SX tự động
+- Auto LSX-xxxx code, BOM→ProductionOrderItem[], status = new, priority = normal
+- Liên kết 2 chiều: ProductionOrder.projectId ↔ ProjectInfo.productionOrderId/Code

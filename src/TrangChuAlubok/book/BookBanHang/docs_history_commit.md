@@ -44,3 +44,20 @@
 - `banHangStore.test.ts`: 10 tests (initial state, Quote CRUD, SalesOrder CRUD, resetAll)
 
 **Tổng: 15 files (13 source + 2 test), 26 tests pass**
+
+---
+
+## Phase B2: Liên kết TKBT → Báo giá (Phase 3 Quy trình)
+
+- **Quote type mở rộng**: Thêm `projectId?: string`, `designRevision?: number` vào Quote interface
+- **Được gọi từ**: `BookThietKeBocTach/domain/createQuoteFromProject.ts` — BOM→Quote auto-conversion
+- **Liên kết 2 chiều**: Quote có `projectId` + `designRevision`, ProjectInfo có `quoteId` + `quoteCode` + `quoteDesignRevision`
+
+## Phase B3: Hợp đồng (Phase 4 Quy trình)
+
+- **Contract types**: Contract interface + ContractStatus (draft|signed|completed|cancelled), labels, colors
+- **BanHangTab**: Thêm 'contracts', routeConfig thêm tab 'Hợp đồng' (group Nghiệp vụ)
+- **Store**: contracts[], addContract, updateContract, deleteContract trong banHangStore
+- **ContractList.tsx**: Bảng danh sách, search, filter status, summary
+- **BookBanHangPage**: Thêm case 'contracts' trong renderContent()
+- **Được gọi từ**: `BookThietKeBocTach/domain/createContractFromQuote.ts` — Quote→Contract auto-conversion

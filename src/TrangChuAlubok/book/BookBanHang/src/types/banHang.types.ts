@@ -1,6 +1,6 @@
 // ============================================================
 // BookBanHang — Types
-// Quote (Báo giá) + Sales Order (Đơn bán hàng)
+// Quote (Báo giá) + Contract (Hợp đồng) + Sales Order (Đơn bán hàng)
 // ============================================================
 
 // ── Quote Status Workflow ────────────────────────────────────
@@ -51,6 +51,10 @@ export interface Quote {
   customerName: string;
   projectName?: string;
   projectRef?: string;
+  /** Liên kết dự án thiết kế (Phase 3) */
+  projectId?: string;
+  /** designRevision tại thời điểm tạo/cập nhật báo giá */
+  designRevision?: number;
   items: QuoteItem[];
   subtotal: number;
   taxRate: number;
@@ -136,9 +140,66 @@ export interface SalesOrder {
   cancelledAt?: string;
 }
 
+// ── Contract Status Workflow ─────────────────────────────────
+// draft → signed → completed
+//      → cancelled
+
+export type ContractStatus = 'draft' | 'signed' | 'completed' | 'cancelled';
+
+export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
+  draft: 'Nháp',
+  signed: 'Đã ký',
+  completed: 'Hoàn thành',
+  cancelled: 'Hủy',
+};
+
+export const CONTRACT_STATUS_COLORS: Record<ContractStatus, string> = {
+  draft: '#6c7086',      // gray
+  signed: '#a6e3a1',     // green
+  completed: '#89b4fa',  // blue
+  cancelled: '#585b70',  // dark gray
+};
+
+// ── Contract ─────────────────────────────────────────────────
+
+export interface Contract {
+  contractId: string;
+  contractCode: string; // HD-0001, HD-0002...
+  quoteId: string;
+  quoteCode: string;
+  customerId: string;
+  customerName: string;
+  projectName?: string;
+  /** Liên kết dự án thiết kế */
+  projectId?: string;
+  /** designRevision tại thời điểm tạo hợp đồng */
+  designRevision?: number;
+  items: QuoteItem[]; // Reuse QuoteItem for contract line items
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  totalDiscount: number;
+  totalAmount: number;
+  depositPercent: number;  // % tạm ứng
+  depositAmount: number;
+  notes?: string;
+  signedDate?: string;
+  deliveryDate?: string;
+  deliveryAddress?: string;
+  warrantyMonths?: number;
+  status: ContractStatus;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  signedBy?: string;
+  signedAt?: string;
+  completedAt?: string;
+  cancelledAt?: string;
+}
+
 // ── Tab type ─────────────────────────────────────────────────
 
-export type BanHangTab = 'quotes' | 'orders' | 'report-quotes' | 'report-sales';
+export type BanHangTab = 'quotes' | 'orders' | 'contracts' | 'report-quotes' | 'report-sales';
 
 // ── View mode (for list/form/detail navigation) ──────────────
 

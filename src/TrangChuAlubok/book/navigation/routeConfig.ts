@@ -35,6 +35,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     defaultTab: 'quotes',
     tabs: [
       { key: 'quotes',        slug: 'bao-gia',      label: 'Báo giá',       group: 'Nghiệp vụ' },
+      { key: 'contracts',     slug: 'hop-dong',      label: 'Hợp đồng',     group: 'Nghiệp vụ' },
       { key: 'orders',        slug: 'don-ban-hang',  label: 'Đơn bán hàng',  group: 'Nghiệp vụ' },
       { key: 'report-quotes', slug: 'bc-bao-gia',    label: 'BC Báo giá',    group: 'Báo cáo' },
       { key: 'report-sales',  slug: 'bc-ban-hang',   label: 'BC Bán hàng',   group: 'Báo cáo' },

@@ -100,6 +100,9 @@ export interface UseKeyboardShortcutsParams {
 
   // Trigger counters
   setTriggerClearSelection: React.Dispatch<React.SetStateAction<number>>;
+
+  /** Phase 7: Block mutating shortcuts when project is locked */
+  isLocked?: boolean;
 }
 
 // ==================== Hook ====================
@@ -138,6 +141,7 @@ export function useKeyboardShortcuts(params: UseKeyboardShortcutsParams): void {
     activeTool,
     offsetDistance,
     setTriggerClearSelection,
+    isLocked,
   } = params;
 
   useEffect(() => {
@@ -154,7 +158,7 @@ export function useKeyboardShortcuts(params: UseKeyboardShortcutsParams): void {
 
       // NOTE: Undo/Redo (Ctrl+Z/Y) is handled by CadDrawingCanvas directly
 
-      // Copy (Ctrl+C) - Copy selected entities to clipboard
+      // Copy (Ctrl+C) - Copy selected entities to clipboard (read-only, always allowed)
       if (e.ctrlKey && e.key === "c") {
         e.preventDefault();
         const selectedCadEntities = documentEntities.filter((ent) =>
@@ -172,18 +176,7 @@ export function useKeyboardShortcuts(params: UseKeyboardShortcutsParams): void {
         return;
       }
 
-      // Paste (Ctrl+V) - Enter paste mode, click to place
-      if (e.ctrlKey && e.key === "v") {
-        e.preventDefault();
-        if (ClipboardManager.hasData()) {
-          setIsPasteMode(true);
-          setIsQuickCopyMode(false);
-          console.log("Paste mode activated - click to place");
-        }
-        return;
-      }
-
-      // Select all - select all canvas entities and dimensions
+      // Select all - select all canvas entities and dimensions (read-only, always allowed)
       if (e.ctrlKey && e.key === "a") {
         e.preventDefault();
         const allEntityIds = documentEntities.map((e) => e.id);
@@ -194,6 +187,21 @@ export function useKeyboardShortcuts(params: UseKeyboardShortcutsParams): void {
           setSelectedDimensionIds(dimensions.map((d) => d.id));
         }
         selectAll();
+        return;
+      }
+
+      // Phase 7: Block ALL mutating shortcuts when project is locked
+      // (Ctrl+C, Ctrl+A, ESC are allowed; everything below mutates state)
+      if (isLocked && e.key !== "Escape") return;
+
+      // Paste (Ctrl+V) - Enter paste mode, click to place
+      if (e.ctrlKey && e.key === "v") {
+        e.preventDefault();
+        if (ClipboardManager.hasData()) {
+          setIsPasteMode(true);
+          setIsQuickCopyMode(false);
+          console.log("Paste mode activated - click to place");
+        }
         return;
       }
 
@@ -399,5 +407,6 @@ export function useKeyboardShortcuts(params: UseKeyboardShortcutsParams): void {
     setSelectedDimensionIds,
     setTriggerClearSelection,
     clearSelection,
+    isLocked,
   ]);
 }

@@ -7,7 +7,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 // ==================== Utility Imports ====================
 import { getCursor } from "./utils";
@@ -116,6 +116,7 @@ export const CadDrawingCanvas: React.FC<CadDrawingCanvasProps> = ({
   triggerDelete = 0,
   triggerClearSelection = 0,
   textScaleTrigger = 0,
+  triggerZoomFit = 0,
   currentStrokeStyle = "solid",
   onEntityCreated,
   onEntityUpdated,
@@ -233,6 +234,48 @@ export const CadDrawingCanvas: React.FC<CadDrawingCanvasProps> = ({
     setTextScaleInput,
     onPromptChange,
   });
+
+  // ==================== Trigger Zoom Fit ====================
+  const triggerZoomFitRef = useRef(0);
+  useEffect(() => {
+    if (triggerZoomFit > 0 && triggerZoomFit !== triggerZoomFitRef.current) {
+      triggerZoomFitRef.current = triggerZoomFit;
+      if (entities.length === 0) return;
+
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const e of entities) {
+        if (e.type === "circle" || e.type === "arc") {
+          if (e.points.length >= 2) {
+            const cx = e.points[0].x, cy = e.points[0].y;
+            const r = e.points[1].x;
+            minX = Math.min(minX, cx - r); minY = Math.min(minY, cy - r);
+            maxX = Math.max(maxX, cx + r); maxY = Math.max(maxY, cy + r);
+          }
+        } else if (e.type === "ellipse") {
+          if (e.points.length >= 1) {
+            const cx = e.points[0].x, cy = e.points[0].y;
+            const rx = e.radiusX ?? 0, ry = e.radiusY ?? 0;
+            minX = Math.min(minX, cx - rx); minY = Math.min(minY, cy - ry);
+            maxX = Math.max(maxX, cx + rx); maxY = Math.max(maxY, cy + ry);
+          }
+        } else {
+          for (const p of e.points) {
+            minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+          }
+        }
+      }
+      if (!isFinite(minX) || !isFinite(maxX)) return;
+      const cv = canvasRef.current;
+      if (!cv) return;
+      const cw = cv.width || 800, ch = cv.height || 600;
+      const ww = maxX - minX || 1, wh = maxY - minY || 1;
+      const newZoom = Math.min(cw / ww, ch / wh) * 0.85;
+      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+      setZoom(newZoom);
+      setPan({ x: -cx * newZoom, y: cy * newZoom });
+    }
+  }, [triggerZoomFit, entities, canvasRef, setZoom, setPan]);
 
   // ==================== Tool Change ====================
 

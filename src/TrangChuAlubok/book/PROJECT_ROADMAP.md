@@ -1,7 +1,7 @@
 # ALUBOK — PROJECT ROADMAP (Thứ tự ưu tiên)
 
 > Roadmap tổng thể dự án — định hướng thứ tự build các module
-> Cập nhật: **19/03/2026**
+> Cập nhật: **21/03/2026**
 > Tham chiếu: [PERMISSION_CATALOG.md](PERMISSION_CATALOG.md) · [BOOK_STRUCTURE.md](BOOK_STRUCTURE.md)
 
 ---
@@ -19,7 +19,7 @@
 
 | Module | Trạng thái | Tests | Ghi chú |
 |--------|-----------|-------|---------|
-| BookThietKeBocTach | ✅ Core hoàn chỉnh | 875/875 | CAD engine + BOM + 5 Export formats |
+| BookThietKeBocTach | ✅ Core hoàn chỉnh | 1500/1500 | CAD engine + BOM + 5 Export + DXF Import (52 suites) |
 | shared/ | ✅ Phase F1 hoàn chỉnh | 85 | Types + RBAC + Guards + Hooks |
 | DanhMuc/ | ✅ Phase F2 hoàn chỉnh | 37 | 12 master data resources, generic CRUD |
 | ThietLap/ | ✅ Phase F3 hoàn chỉnh | 36 | 8 tabs RBAC UI (D1-D8), 15 source files |

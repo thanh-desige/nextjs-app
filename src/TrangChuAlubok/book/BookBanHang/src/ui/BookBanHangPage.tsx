@@ -1,8 +1,8 @@
 'use client';
 // ============================================================
 // BookBanHangPage — Sales management page
-// Horizontal tab bar (4 tabs) + dynamic content area
-// Tabs: Báo giá, Đơn bán hàng, BC Báo giá, BC Bán hàng
+// Horizontal tab bar (5 tabs) + dynamic content area
+// Tabs: Báo giá, Hợp đồng, Đơn bán hàng, BC Báo giá, BC Bán hàng
 // ============================================================
 
 import React, { useState } from 'react';
@@ -11,6 +11,7 @@ import { MODULE_ROUTES, ModuleTabBar } from '../../../navigation';
 import QuoteList from './QuoteList';
 import QuoteForm from './QuoteForm';
 import QuoteDetail from './QuoteDetail';
+import ContractList from './ContractList';
 import SalesOrderList from './SalesOrderList';
 import SalesOrderForm from './SalesOrderForm';
 import SalesOrderDetail from './SalesOrderDetail';
@@ -30,6 +31,8 @@ export default function BookBanHangPage({ activeTab, onTabChange }: BookBanHangP
   const [quoteSelectedId, setQuoteSelectedId] = useState<string | null>(null);
   const [orderView, setOrderView] = useState<ViewMode>('list');
   const [orderSelectedId, setOrderSelectedId] = useState<string | null>(null);
+  const [contractView, setContractView] = useState<ViewMode>('list');
+  const [contractSelectedId, setContractSelectedId] = useState<string | null>(null);
 
   const tab = activeTab as BanHangTab;
 
@@ -41,6 +44,8 @@ export default function BookBanHangPage({ activeTab, onTabChange }: BookBanHangP
         if (quoteView === 'detail' && quoteSelectedId)
           return <QuoteDetail quoteId={quoteSelectedId} onBack={() => { setQuoteView('list'); setQuoteSelectedId(null); }} onEdit={(id) => { setQuoteSelectedId(id); setQuoteView('form'); }} />;
         return <QuoteList onView={(id) => { setQuoteSelectedId(id); setQuoteView('detail'); }} onCreate={() => { setQuoteSelectedId(null); setQuoteView('form'); }} />;
+      case 'contracts':
+        return <ContractList onView={(id) => { setContractSelectedId(id); setContractView('detail'); }} />;
       case 'orders':
         if (orderView === 'form')
           return <SalesOrderForm editId={orderSelectedId} onBack={() => { setOrderView('list'); setOrderSelectedId(null); }} />;

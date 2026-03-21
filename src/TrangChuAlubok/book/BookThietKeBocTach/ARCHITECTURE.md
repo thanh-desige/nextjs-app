@@ -156,7 +156,8 @@ BookThietKeBocTach/src/
 │   ├── export/        # Export modules (JSON, DXF, SVG, PNG, PDF)
 │   ├── properties/    # PropertySchema (LUẬT TỐI CAO)
 │   └── engine/        # CadEngine
-├── domain/            # BOM, Materials, Door templates
+├── domain/            # BOM, Materials, Door templates, computeProjectStatus
+├── hooks/             # React hooks (useProjectSync, useCadEngine, ...)
 ├── hooks/             # React hooks
 ├── store/             # Zustand stores
 ├── types/             # Type definitions
@@ -179,8 +180,11 @@ BookThietKeBocTach/src/
 | `core/export/ExportPDFCore.ts`      | PDF 1.4 export (IEntity-based)       |
 | `core/export/ExportSVGCore.ts`      | SVG export (IEntity-based)           |
 | `core/share/shareSerializer.ts`     | lz-string encode/decode share snapshots |
+| `domain/computeProjectStatus.ts`    | Auto-compute trạng thái dự án từ dữ liệu thật (revision-based) |
 | `store/engineStore.ts`              | Global state (Zustand)         |
+| `store/projectStore.ts`             | Project + BOM state (15+ workflow fields) |
 | `ui/canvas/CadDrawingCanvas.tsx`    | Main canvas component          |
+| `ui/views/ProjectListView.tsx`      | Danh sách dự án + sidebar "Quy trình" + status badge |
 | `ui/components/ShareModal.tsx`      | Share modal (tabs, permissions, lz-string) |
 
 ---
@@ -196,4 +200,4 @@ Trước khi commit code, kiểm tra:
 
 ---
 
-> **Cập nhật lần cuối**: March 7, 2026
+> **Cập nhật lần cuối**: March 20, 2026

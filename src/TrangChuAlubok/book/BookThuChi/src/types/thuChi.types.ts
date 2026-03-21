@@ -59,6 +59,9 @@ export interface CashReceipt {
   customerId: string;
   customerName: string;
   soCode?: string; // Từ đơn bán DH-XXXX
+  projectId?: string; // Liên kết dự án TKBT
+  contractId?: string; // Liên kết hợp đồng
+  contractCode?: string; // HD-xxxx
   amount: number;
   paymentMethod: PaymentMethod;
   bankAccount?: string;

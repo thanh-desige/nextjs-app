@@ -54,3 +54,15 @@
 - thuChiTypes.test.ts: 13 tests (status labels/colors, method labels, calcDebtStatus, calcRemainingAmount)
 - thuChiStore.test.ts: 21 tests (initial state 8, receipt CRUD 4, payment CRUD 4, AR 2, AP 2, resetAll 1)
 - Full suite: 1158 tests, 36 suites — ALL PASS
+
+---
+
+## Phase B5: Liên kết dự án TKBT → Phiếu thu (20/03/2026)
+
+### B5.1: CashReceipt type mở rộng
+- Thêm `projectId?: string`, `contractId?: string`, `contractCode?: string` vào CashReceipt
+
+### B5.2: Kết nối từ quy trình dự án
+- Service `createReceiptFromContract(project)` trong module TKBT tạo phiếu thu tự động
+- Auto PT-xxxx code, amount = contract.depositAmount, status = confirmed
+- Phiếu thu liên kết 2 chiều: Receipt ↔ ProjectInfo (receiptId, receiptCode)
